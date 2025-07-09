@@ -1,0 +1,32 @@
+/* client/src/components/Layout.css */
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: var(--bg, #f4f4f4);
+  color: var(--text, #000);
+  border-bottom: 1px solid #ccc;
+}
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+body.dark .top-bar {
+  background-color: #222;
+  color: white;
+}
+
+.outlet-wrapper {
+  padding: 2rem;
+}

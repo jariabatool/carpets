@@ -1,0 +1,341 @@
+// // // import { useCart } from "../context/CartContext";
+// // // import "./Cart.css";
+// // // import { useState } from "react";
+// // // import { useNavigate } from "react-router-dom"; // import for routing
+
+// // // export default function Cart() {
+// // //   const { cart, updateQuantity, removeFromCart } = useCart();
+// // //   const [isOpen, setIsOpen] = useState(false);
+// // //   const navigate = useNavigate();
+
+// // //   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+// // //   return (
+// // //     <div className="cart-wrapper">
+// // //       <div className="cart-icon" onClick={() => setIsOpen(!isOpen)}>
+// // //         🛒
+// // //         {totalItems > 0 && <span className="cart-count">{totalItems}</span>}
+// // //       </div>
+
+// // //       {isOpen && (
+// // //         <div className="cart-dropdown">
+// // //           <h3>Your Cart</h3>
+// // //           {cart.length === 0 ? (
+// // //             <p>No items in cart.</p>
+// // //           ) : (
+// // //             <>
+// // //               {cart.map((item) => (
+// // //                 <div className="cart-item" key={item._id}>
+// // //                   <img src={item.images[0]} alt={item.name} />
+// // //                   <div className="item-info">
+// // //                     <h4>{item.name}</h4>
+// // //                     <p>${item.price}</p>
+// // //                     <div className="quantity-controls">
+// // //                       <button
+// // //                         onClick={() =>
+// // //                           updateQuantity(item._id, item.quantity - 1)
+// // //                         }
+// // //                         disabled={item.quantity <= 1}
+// // //                       >
+// // //                         -
+// // //                       </button>
+// // //                       <span>{item.quantity}</span>
+// // //                       <button
+// // //                         onClick={() =>
+// // //                           updateQuantity(item._id, item.quantity + 1)
+// // //                         }
+// // //                         disabled={item.quantity >= item.availableQuantity}
+// // //                       >
+// // //                         +
+// // //                       </button>
+// // //                       <button
+// // //                         className="remove-btn"
+// // //                         onClick={() => removeFromCart(item._id)}
+// // //                       >
+// // //                         ❌
+// // //                       </button>
+// // //                     </div>
+// // //                   </div>
+// // //                 </div>
+// // //               ))}
+
+// // //               {/* ✅ Checkout button when cart is not empty */}
+// // //               <button
+// // //                 className="checkout-btn"
+// // //                 onClick={() => {
+// // //                   setIsOpen(false);
+// // //                   navigate("/checkout");
+// // //                 }}
+// // //               >
+// // //                 Proceed to Checkout
+// // //               </button>
+// // //             </>
+// // //           )}
+// // //         </div>
+// // //       )}
+// // //     </div>
+// // //   );
+// // // }
+// // import { useCart } from "../context/CartContext";
+// // import "./Cart.css";
+// // import { useState } from "react";
+// // import { useNavigate } from "react-router-dom";
+
+// // export default function Cart() {
+// //   const { cart, updateQuantity, removeFromCart } = useCart();
+// //   const [isOpen, setIsOpen] = useState(false);
+// //   const navigate = useNavigate();
+
+// //   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+// //   return (
+// //     <div className="cart-wrapper">
+// //       <div className="cart-icon" onClick={() => setIsOpen(!isOpen)}>
+// //         🛒
+// //         {totalItems > 0 && <span className="cart-count">{totalItems}</span>}
+// //       </div>
+
+// //       {isOpen && (
+// //         <div className="cart-dropdown">
+// //           <h3>Your Cart</h3>
+// //           {cart.length === 0 ? (
+// //             <p>No items in cart.</p>
+// //           ) : (
+// //             <>
+// //               {cart.map((item) => (
+// //                 <div className="cart-item" key={item._id}>
+// //                   <img src={item.images?.[0]} alt={item.name} />
+// //                   <div className="item-info">
+// //                     <h4>{item.name}</h4>
+// //                     {item.selectedVariant && (
+// //                       <p className="variant-info">
+// //                         Variant: {item.selectedVariant.color} / {item.selectedVariant.size}
+// //                       </p>
+// //                     )}
+// //                     <p>${item.price}</p>
+// //                     <div className="quantity-controls">
+// //                       <button
+// //                         onClick={() =>
+// //                           updateQuantity(item._id, item.quantity - 1)
+// //                         }
+// //                         disabled={item.quantity <= 1}
+// //                       >
+// //                         -
+// //                       </button>
+// //                       <span>{item.quantity}</span>
+// //                       <button
+// //                         onClick={() =>
+// //                           updateQuantity(item._id, item.quantity + 1)
+// //                         }
+// //                         disabled={item.quantity >= item.availableQuantity}
+// //                       >
+// //                         +
+// //                       </button>
+// //                       <button
+// //                         className="remove-btn"
+// //                         onClick={() => removeFromCart(item._id)}
+// //                       >
+// //                         ❌
+// //                       </button>
+// //                     </div>
+// //                   </div>
+// //                 </div>
+// //               ))}
+
+// //               <button
+// //                 className="checkout-btn"
+// //                 onClick={() => {
+// //                   setIsOpen(false);
+// //                   navigate("/checkout");
+// //                 }}
+// //               >
+// //                 Proceed to Checkout
+// //               </button>
+// //             </>
+// //           )}
+// //         </div>
+// //       )}
+// //     </div>
+// //   );
+// // }
+// import { useCart } from "../context/CartContext";
+// import "./Cart.css";
+// import { useState } from "react";
+// import { useNavigate } from "react-router-dom";
+
+// export default function Cart() {
+//   const { cart, updateQuantity, removeFromCart } = useCart();
+//   const [isOpen, setIsOpen] = useState(false);
+//   const navigate = useNavigate();
+
+//   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+//   const handleRemove = (id) => {
+//     const confirmed = window.confirm("Are you sure you want to remove this item from cart?");
+//     if (confirmed) {
+//       removeFromCart(id);
+//     }
+//   };
+
+//   const handleIncrease = (item) => {
+//     if (item.quantity >= item.availableQuantity) {
+//       alert("No more available quantity for this variant.");
+//     } else {
+//       updateQuantity(item._id, item.quantity + 1);
+//     }
+//   };
+
+//   const handleDecrease = (item) => {
+//     if (item.quantity > 1) {
+//       updateQuantity(item._id, item.quantity - 1);
+//     }
+//   };
+
+//   return (
+//     <div className="cart-wrapper">
+//       <div className="cart-icon" onClick={() => setIsOpen(!isOpen)}>
+//         🛒
+//         {totalItems > 0 && <span className="cart-count">{totalItems}</span>}
+//       </div>
+
+//       {isOpen && (
+//         <div className="cart-dropdown">
+//           <h3>Your Cart</h3>
+//           {cart.length === 0 ? (
+//             <p>No items in cart.</p>
+//           ) : (
+//             <>
+//               {cart.map((item) => (
+//                 <div className="cart-item" key={item._id}>
+//                   <img src={item.images?.[0]} alt={item.name} />
+//                   <div className="item-info">
+//                     <h4>{item.name}</h4>
+//                     {item.selectedVariant && (
+//                       <p className="variant-info">
+//                         Variant: {item.selectedVariant.color} / {item.selectedVariant.size}
+//                       </p>
+//                     )}
+//                     <p>${item.price}</p>
+//                     <div className="quantity-controls">
+//                       <button onClick={() => handleDecrease(item)} disabled={item.quantity <= 1}>
+//                         -
+//                       </button>
+//                       <span>{item.quantity}</span>
+//                       <button onClick={() => handleIncrease(item)}>
+//                         +
+//                       </button>
+//                       <button className="remove-btn" onClick={() => handleRemove(item._id)}>
+//                         ❌
+//                       </button>
+//                     </div>
+//                   </div>
+//                 </div>
+//               ))}
+
+//               <button
+//                 className="checkout-btn"
+//                 onClick={() => {
+//                   setIsOpen(false);
+//                   navigate("/checkout");
+//                 }}
+//               >
+//                 Proceed to Checkout
+//               </button>
+//             </>
+//           )}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+import { useCart } from "../context/CartContext";
+import "./Cart.css";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function Cart() {
+  const { cart, updateQuantity, removeFromCart } = useCart();
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleRemove = (item) => {
+    const confirmed = window.confirm("Are you sure you want to remove this item?");
+    if (confirmed) {
+      removeFromCart(item._id, item.selectedVariant);
+    }
+  };
+
+  return (
+    <div className="cart-wrapper">
+      <div className="cart-icon" onClick={() => setIsOpen(!isOpen)}>
+        🛒
+        {totalItems > 0 && <span className="cart-count">{totalItems}</span>}
+      </div>
+
+      {isOpen && (
+        <div className="cart-dropdown">
+          <h3>Your Cart</h3>
+          {cart.length === 0 ? (
+            <p>No items in cart.</p>
+          ) : (
+            <>
+              {cart.map((item) => (
+                <div className="cart-item" key={`${item._id}-${item.selectedVariant?.color}-${item.selectedVariant?.size}`}>
+                  <img src={item.images?.[0]} alt={item.name} />
+                  <div className="item-info">
+                    <h4>{item.name}</h4>
+                    {item.selectedVariant && (
+                      <p className="variant-info">
+                        Variant: {item.selectedVariant.color} / {item.selectedVariant.size}
+                      </p>
+                    )}
+                    <p>${item.price}</p>
+                    <div className="quantity-controls">
+                      <button
+                        onClick={() =>
+                          updateQuantity(item._id, item.selectedVariant, item.quantity - 1)
+                        }
+                        disabled={item.quantity <= 1}
+                      >
+                        -
+                      </button>
+                      <span>{item.quantity}</span>
+                      <button
+                        onClick={() => {
+                          if (item.quantity < item.availableQuantity) {
+                            updateQuantity(item._id, item.selectedVariant, item.quantity + 1);
+                          } else {
+                            alert("No more available quantity");
+                          }
+                        }}
+                      >
+                        +
+                      </button>
+                      <button
+                        className="remove-btn"
+                        onClick={() => handleRemove(item)}
+                      >
+                        ❌
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button
+                className="checkout-btn"
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate("/checkout");
+                }}
+              >
+                Proceed to Checkout
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
