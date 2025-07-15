@@ -192,4 +192,24 @@ body, html {
   background-color: #000;
 }
 
+.top-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem;
+}
+.theme-toggle, .manage-btn, .profile-btn {
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  background: #333;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+.theme-toggle:hover,
+.manage-btn:hover,
+.profile-btn:hover {
+  background: #555;
+}
+
 

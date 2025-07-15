@@ -3,8 +3,9 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Carpet from './models/Carpet.js';
-import User from './models/User.js'; // Optional: future use
+import User from './models/User.js'; 
 import Order from './models/Order.js';
+// import bcrypt from 'bcrypt';
 
 dotenv.config();
 
@@ -22,6 +23,27 @@ const homepageSubcategories = [
   { type: 'rugs', subcategory: 'machine' },
   { type: 'mats', subcategory: 'bathroom' },
 ];
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user || user.password !== password) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Optional: hash comparison if you stored hashed passwords
+    // const match = await bcrypt.compare(password, user.password);
+    // if (!match) return res.status(401).json({ message: 'Invalid credentials' });
+
+    res.json({ user: { _id: user._id, name: user.name, role: user.role, email: user.email } });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 
 // Endpoint: Homepage previews
 app.get('/api/products/preview', async (req, res) => {
@@ -58,76 +80,6 @@ app.get('/api/products', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch category products' });
   }
 });
-
-// Endpoint: Product detail by ID
-// app.get('/api/products/:id', async (req, res) => {
-//   const { id } = req.params;
-
-//   if (!mongoose.Types.ObjectId.isValid(id)) {
-//     return res.status(400).json({ error: 'Invalid product ID' });
-//   }
-
-//   try {
-//     const product = await Carpet.findById(id);
-//     if (!product) {
-//       return res.status(404).json({ error: 'Carpet not found' });
-//     }
-//     res.json(product);
-//   } catch (err) {
-//     console.error('Failed to fetch carpet:', err);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// });
-
-// app.post('/api/orders', async (req, res) => {
-//   try {
-//     const { paymentMethod } = req.body;
-
-//     const order = new Order({
-//       ...req.body,
-//       paid: paymentMethod === 'online' ? true : false
-//     });
-
-//     await order.save();
-//     res.status(201).json({ success: true, order });
-//   } catch (err) {
-//     console.error("Order creation error:", err);
-//     res.status(500).json({ error: "Failed to place order" });
-//   }
-// });
-
-
-// app.post("/api/orders", async (req, res) => {
-//   try {
-//     const {
-//       buyer,
-//       products, // ✅ this must match what your frontend sends
-//       totalAmount,
-//       deliveryCharges,
-//       paymentMethod,
-//       paid
-//     } = req.body;
-
-//     // ✅ Debug: check what's coming in
-//     console.log("REQ BODY PRODUCTS:", products);
-
-//     const order = new Order({
-//       buyer,
-//       products,
-//       totalAmount,
-//       deliveryCharges,
-//       paymentMethod,
-//       paid,
-//       status: "pending"
-//     });
-
-//     await order.save();
-//     res.status(201).json({ message: "Order saved successfully" });
-//   } catch (err) {
-//     console.error("Order creation error:", err);
-//     res.status(500).json({ message: "Failed to save order" });
-//   }
-// });
 
 // GET a single product by ID
 app.get('/api/products/:id', async (req, res) => {
@@ -184,6 +136,39 @@ app.post("/api/orders", async (req, res) => {
   } catch (err) {
     console.error("Order creation error:", err);
     res.status(500).json({ message: "Failed to save order" });
+  }
+});
+
+app.post("/api/products", async (req, res) => {
+  try {
+    const { name, description, images, variants, sellerId } = req.body;
+
+    if (!sellerId) return res.status(400).json({ error: "Missing seller ID" });
+
+    const newProduct = new Carpet({
+      name,
+      description,
+      images,
+      variants,
+      sellerId
+    });
+
+    await newProduct.save();
+
+    res.status(201).json({ success: true, product: newProduct });
+  } catch (err) {
+    console.error("Add product error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+app.get('/api/carpet-meta', async (req, res) => {
+  try {
+    const types = await Carpet.distinct('type');
+    const subcategories = await Carpet.distinct('subcategory');
+    res.json({ types, subcategories });
+  } catch (err) {
+    console.error('Error fetching carpet metadata:', err);
+    res.status(500).json({ error: 'Failed to fetch metadata' });
   }
 });
 

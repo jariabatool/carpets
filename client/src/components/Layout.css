@@ -30,3 +30,24 @@ body.dark .top-bar {
 .outlet-wrapper {
   padding: 2rem;
 }
+/* Layout.css */
+
+.layout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* ✅ Vertically center items */
+  padding: 10px 20px;
+  background-color: #f7f7f7;
+  border-bottom: 1px solid #ddd;
+}
+
+.layout-header-left h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.layout-header-right {
+  display: flex;
+  align-items: center;  /* ✅ Vertical alignment */
+  gap: 1rem;             /* ✅ Space between Cart, Theme, Profile */
+}
