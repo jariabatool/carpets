@@ -139,28 +139,95 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
+// Add Product Endpoint
 app.post("/api/products", async (req, res) => {
   try {
-    const { name, description, images, variants, sellerId } = req.body;
-
-    if (!sellerId) return res.status(400).json({ error: "Missing seller ID" });
-
-    const newProduct = new Carpet({
+    const {
       name,
       description,
+      type,
+      subcategory,
       images,
+      sellerId,
+      variants
+    } = req.body;
+
+    // calculate totalQuantity and availableQuantity from variants
+    const totalQuantity = variants.reduce((sum, v) => sum + v.quantity, 0);
+    const availableQuantity = totalQuantity;
+
+    const newCarpet = new Carpet({
+      name,
+      description,
+      type,
+      subcategory,
+      images,
+      sellerId,
       variants,
-      sellerId
+      totalQuantity,
+      availableQuantity
     });
 
-    await newProduct.save();
+    await newCarpet.save();
 
-    res.status(201).json({ success: true, product: newProduct });
+    res.status(201).json({
+      message: "Product added successfully",
+      product: newCarpet
+    });
   } catch (err) {
-    console.error("Add product error:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Error adding product:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+// Update product by ID
+app.put("/api/products/:id", async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid product ID" });
+  }
+
+  try {
+    const updatedProduct = await Carpet.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: "Carpet not found" });
+    }
+
+    res.json(updatedProduct);
+  } catch (err) {
+    console.error("Failed to update carpet:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// app.post("/api/products", async (req, res) => {
+//   try {
+//     const { name, description, images, variants, sellerId } = req.body;
+
+//     if (!sellerId) return res.status(400).json({ error: "Missing seller ID" });
+
+//     const newProduct = new Carpet({
+//       name,
+//       description,
+//       images,
+//       variants,
+//       sellerId
+//     });
+
+//     await newProduct.save();
+
+//     res.status(201).json({ success: true, product: newProduct });
+//   } catch (err) {
+//     console.error("Add product error:", err);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
 app.get('/api/carpet-meta', async (req, res) => {
   try {
     const types = await Carpet.distinct('type');

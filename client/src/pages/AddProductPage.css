@@ -1,124 +1,99 @@
 .add-product-container {
-  max-width: 800px;
+  max-width: 700px;
   margin: 40px auto;
-  padding: 30px;
-  background: #ffffff;
+  padding: 25px;
+  background: #fff;
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  font-family: "Segoe UI", sans-serif;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-.add-product-container h2 {
+.page-title {
   text-align: center;
-  color: #2e2e2e;
-  margin-bottom: 30px;
-  font-size: 28px;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  color: #333;
 }
 
-.add-product-container form {
+.add-product-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
 }
 
-.add-product-container input,
-.add-product-container textarea {
-  padding: 12px 16px;
-  font-size: 16px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  transition: border-color 0.3s;
+.add-product-form label {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #444;
+}
+
+.add-product-form input,
+.add-product-form textarea,
+.add-product-form select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
   width: 100%;
+  transition: border 0.2s ease-in-out;
 }
 
-.add-product-container input:focus,
-.add-product-container textarea:focus {
-  border-color: #5b6dfa;
+.add-product-form input:focus,
+.add-product-form textarea:focus,
+.add-product-form select:focus {
+  border-color: #4cafef;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(91, 109, 250, 0.2);
 }
 
-.add-product-container textarea {
-  min-height: 100px;
+textarea {
+  min-height: 80px;
   resize: vertical;
 }
 
-.variant-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+.variant-block {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: 10px;
+  align-items: center;
 }
 
-.variant-group input {
-  flex: 1 1 22%;
-  min-width: 100px;
-}
-
-.add-product-container h4 {
-  margin-top: 20px;
-  color: #444;
-  font-weight: 600;
-  font-size: 18px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 5px;
-}
-
-.add-product-container button {
-  padding: 12px 20px;
-  background: #5b6dfa;
-  color: #fff;
+.primary-btn {
+  padding: 12px;
+  background: #4cafef;
   border: none;
   border-radius: 10px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-  align-self: flex-start;
-}
-
-.add-product-container button:hover {
-  background: #3f51b5;
-}
-
-.add-product-container button[type="button"] {
-  background: #e0e0e0;
-  color: #333;
-  margin-top: 5px;
-}
-
-.add-product-container button[type="button"]:hover {
-  background: #ccc;
-}
-
-.variant-block {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-
-.variant-block input {
-  flex: 1 1 120px;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-.add-variant-btn,
-.remove-variant-btn {
-  margin-top: 5px;
-  padding: 6px 12px;
-  background-color: #007bff;
   color: white;
-  border: none;
-  border-radius: 6px;
+  font-size: 1rem;
   cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+
+.primary-btn:hover {
+  background: #2196f3;
+}
+
+.secondary-btn {
+  padding: 8px 12px;
+  border: 1px dashed #4cafef;
+  background: #f4f9ff;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #4cafef;
+  font-size: 0.9rem;
+  transition: background 0.2s ease-in-out;
+}
+
+.secondary-btn:hover {
+  background: #e3f2fd;
 }
 
 .remove-variant-btn {
-  background-color: #dc3545;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #d9534f;
 }
 
-.add-variant-btn:hover,
 .remove-variant-btn:hover {
-  opacity: 0.9;
+  color: #c9302c;
 }
