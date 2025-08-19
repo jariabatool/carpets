@@ -1,148 +1,179 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import "./EditProductPage.css";
 
 export default function EditProductPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [products, setProducts] = useState([]);
+  const [editingProduct, setEditingProduct] = useState(null);
 
+  // Fetch all products (later filter by sellerId if needed)
   useEffect(() => {
-    async function fetchProduct() {
-      try {
-        const res = await fetch(`/api/products/${id}`);
-        const data = await res.json();
-        setProduct(data);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching product:", err);
-      }
-    }
-    fetchProduct();
-  }, [id]);
+    fetch("http://localhost:5000/api/products") // adjust backend endpoint
+      .then((res) => res.json())
+      .then((data) => setProducts(data))
+      .catch((err) => console.error(err));
+  }, []);
 
+  // Handle field change for main product info
   const handleChange = (e) => {
-    setProduct({ ...product, [e.target.name]: e.target.value });
+    setEditingProduct({ ...editingProduct, [e.target.name]: e.target.value });
   };
 
+  // Handle variant change
   const handleVariantChange = (index, e) => {
-    const updatedVariants = [...product.variants];
+    const updatedVariants = [...editingProduct.variants];
     updatedVariants[index][e.target.name] = e.target.value;
-    setProduct({ ...product, variants: updatedVariants });
+    setEditingProduct({ ...editingProduct, variants: updatedVariants });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`/api/products/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(product),
-      });
-      if (res.ok) {
-        setMessage("✅ Product updated successfully!");
-        setTimeout(() => navigate("/manage-products"), 1500);
-      } else {
-        setMessage("❌ Failed to update product.");
-      }
-    } catch (err) {
-      console.error("Update failed:", err);
-      setMessage("❌ Error occurred.");
-    }
+  // Add new variant
+  const handleAddVariant = () => {
+    setEditingProduct({
+      ...editingProduct,
+      variants: [...editingProduct.variants, { color: "", size: "", price: 0, quantity: 0 }],
+    });
   };
 
-  if (loading) return <p className="loading">Loading product...</p>;
+  // Remove a variant
+  const handleRemoveVariant = (index) => {
+    const updatedVariants = editingProduct.variants.filter((_, i) => i !== index);
+    setEditingProduct({ ...editingProduct, variants: updatedVariants });
+  };
+
+  // Save updated product
+  const handleSave = () => {
+    fetch(`http://localhost:5000/api/products/${editingProduct._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingProduct),
+    })
+      .then((res) => res.json())
+      .then((updated) => {
+        alert("Product updated successfully!");
+        setProducts(
+          products.map((p) => (p._id === updated._id ? updated : p))
+        );
+        setEditingProduct(null);
+      })
+      .catch((err) => console.error(err));
+  };
+
+  // Delete product
+  const handleDelete = (id) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+    fetch(`http://localhost:5000/api/products/${id}`, { method: "DELETE" })
+      .then(() => {
+        setProducts(products.filter((p) => p._id !== id));
+      })
+      .catch((err) => console.error(err));
+  };
 
   return (
-    <div className="edit-container">
-      <h2>Edit Product</h2>
-      {message && <p className="message">{message}</p>}
-      <form onSubmit={handleSubmit} className="edit-form">
-        <label>
-          Name:
+    <div className="edit-page-container">
+      <h2>Edit or Delete Products</h2>
+
+      {!editingProduct ? (
+        <div className="product-list">
+          {products.map((product) => (
+            <div key={product._id} className="product-card">
+              <img src={product.images[0]} alt={product.name} />
+              <h3>{product.name}</h3>
+              <p>{product.description}</p>
+              <div className="actions">
+                <button onClick={() => setEditingProduct(product)}>Edit</button>
+                <button onClick={() => handleDelete(product._id)}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="edit-form">
+          <h3>Edit Product</h3>
+
+          <label>Name:</label>
           <input
             type="text"
             name="name"
-            value={product.name}
+            value={editingProduct.name}
             onChange={handleChange}
           />
-        </label>
 
-        <label>
-          Description:
+          <label>Description:</label>
           <textarea
             name="description"
-            value={product.description || ""}
+            value={editingProduct.description}
             onChange={handleChange}
           />
-        </label>
 
-        <label>
-          Type:
-          <input
-            type="text"
+          <label>Category:</label>
+          <select
             name="type"
-            value={product.type}
+            value={editingProduct.type}
             onChange={handleChange}
-          />
-        </label>
+          >
+            <option value="carpets">Carpets</option>
+            <option value="rugs">Rugs</option>
+          </select>
 
-        <label>
-          Subcategory:
-          <input
-            type="text"
+          <label>Subcategory:</label>
+          <select
             name="subcategory"
-            value={product.subcategory}
+            value={editingProduct.subcategory}
             onChange={handleChange}
-          />
-        </label>
+          >
+            <option value="iranian">Iranian</option>
+            <option value="turkish">Turkish</option>
+            <option value="modern">Modern</option>
+            <option value="classic">Classic</option>
+          </select>
 
-        <h3>Variants</h3>
-        {product.variants.map((variant, idx) => (
-          <div key={idx} className="variant-box">
-            <label>
-              Color:
+          <h4>Variants:</h4>
+          {editingProduct.variants.map((variant, index) => (
+            <div key={index} className="variant-row">
               <input
                 type="text"
                 name="color"
+                placeholder="Color"
                 value={variant.color}
-                onChange={(e) => handleVariantChange(idx, e)}
+                onChange={(e) => handleVariantChange(index, e)}
               />
-            </label>
-            <label>
-              Size:
               <input
                 type="text"
                 name="size"
+                placeholder="Size"
                 value={variant.size}
-                onChange={(e) => handleVariantChange(idx, e)}
+                onChange={(e) => handleVariantChange(index, e)}
               />
-            </label>
-            <label>
-              Price:
               <input
                 type="number"
                 name="price"
+                placeholder="Price"
                 value={variant.price}
-                onChange={(e) => handleVariantChange(idx, e)}
+                onChange={(e) => handleVariantChange(index, e)}
               />
-            </label>
-            <label>
-              Quantity:
               <input
                 type="number"
                 name="quantity"
+                placeholder="Quantity"
                 value={variant.quantity}
-                onChange={(e) => handleVariantChange(idx, e)}
+                onChange={(e) => handleVariantChange(index, e)}
               />
-            </label>
-          </div>
-        ))}
+              <button className="remove-btn" onClick={() => handleRemoveVariant(index)}>
+                Remove
+              </button>
+            </div>
+          ))}
 
-        <button type="submit" className="save-btn">Save Changes</button>
-      </form>
+          <button className="add-btn" onClick={handleAddVariant}>
+            + Add New Variant
+          </button>
+
+          <div className="form-actions">
+            <button onClick={handleSave}>Save</button>
+            <button onClick={() => setEditingProduct(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

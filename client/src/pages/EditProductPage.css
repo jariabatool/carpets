@@ -1,74 +1,132 @@
-.edit-container {
-  max-width: 700px;
-  margin: 2rem auto;
-  background: #fff;
+.edit-page-container {
   padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  max-width: 1000px;
+  margin: auto;
 }
 
-.edit-container h2 {
+h2 {
   text-align: center;
-  margin-bottom: 1.5rem;
-  color: #333;
+  margin-bottom: 2rem;
+}
+
+.product-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.product-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.product-card img {
+  max-width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-around;
+}
+
+.actions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.actions button:first-child {
+  background: #4caf50;
+  color: white;
+}
+
+.actions button:last-child {
+  background: #f44336;
+  color: white;
+}
+
+.edit-form {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .edit-form label {
   display: block;
-  margin-bottom: 1rem;
-  font-weight: 600;
-  color: #444;
+  margin-top: 1rem;
+  font-weight: 500;
 }
 
 .edit-form input,
-.edit-form textarea {
+.edit-form textarea,
+.edit-form select {
   width: 100%;
-  padding: 0.6rem;
+  padding: 0.7rem;
+  margin-top: 0.3rem;
   border: 1px solid #ccc;
   border-radius: 8px;
-  margin-top: 0.4rem;
-  font-size: 0.95rem;
 }
 
-.edit-form textarea {
-  resize: vertical;
-  min-height: 80px;
+.variant-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-.variant-box {
-  border: 1px solid #eee;
-  padding: 1rem;
-  border-radius: 10px;
-  margin-bottom: 1rem;
-  background: #fafafa;
+.variant-row input {
+  flex: 1;
 }
 
-.save-btn {
-  display: block;
-  width: 100%;
-  background: #007bff;
+.remove-btn {
+  background: #ff5252;
   color: white;
-  padding: 0.8rem;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.add-btn {
+  margin-top: 1rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  gap: 1rem;
+}
+
+.form-actions button {
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.3s ease;
 }
 
-.save-btn:hover {
-  background: #0056b3;
+.form-actions button:first-child {
+  background: #4caf50;
+  color: white;
 }
 
-.message {
-  text-align: center;
-  margin-bottom: 1rem;
-  font-weight: bold;
-}
-
-.loading {
-  text-align: center;
-  margin-top: 3rem;
-  font-size: 1.2rem;
+.form-actions button:last-child {
+  background: #9e9e9e;
+  color: white;
 }

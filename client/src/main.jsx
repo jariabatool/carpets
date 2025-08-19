@@ -48,6 +48,8 @@ import Layout from "./components/Layout";
 import "./index.css";
 import { AuthProvider } from "./context/AuthContext"; 
 import AddProductPage from './pages/AddProductPage';
+import EditProductPage from './pages/EditProductPage.jsx';
+
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -67,6 +69,7 @@ createRoot(document.getElementById("root")).render(
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="manage-products" element={<ProductManagementPage />} />
               <Route path="add-product" element={<AddProductPage />} />
+              <Route path="edit-product" element={<EditProductPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

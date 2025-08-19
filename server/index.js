@@ -179,7 +179,7 @@ app.post("/api/products", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-// Update product by ID
+// Update product by ID 
 app.put("/api/products/:id", async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
@@ -239,6 +239,71 @@ app.get('/api/carpet-meta', async (req, res) => {
   }
 });
 
+// Get all products (later filter by sellerId) for seller page
+app.get("/products", async (req, res) => {
+  try {
+    // const sellerId = req.user._id; // for now skip auth
+    const products = await Carpet.find(); // later use { sellerId }
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching products", error });
+  }
+});
+
+// Update product for seller page
+// Update product by ID
+app.put("/products/:id", async (req, res) => {
+  try {
+    const updatedProduct = await Carpet.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updatedProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.json(updatedProduct);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating product", error });
+  }
+});
+
+
+// Delete product for seller page
+app.delete("/products/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Carpet.findByIdAndDelete(id);
+    res.json({ message: "Product deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting product", error });
+  }
+});
+
+// filter product for category page
+app.get("/api/filter-products", async (req, res) => {
+  const { type, subcategory, priceMin, priceMax, color, size, sort } = req.query;
+
+  let query = { type, subcategory };
+
+  if (priceMin) query.price = { ...query.price, $gte: Number(priceMin) };
+  if (priceMax) query.price = { ...query.price, $lte: Number(priceMax) };
+  if (color) query.color = color;
+  if (size) query.size = size;
+
+  let dbQuery = Carpet.find(query);
+
+  // Sorting
+  if (sort === "price_asc") dbQuery = dbQuery.sort({ price: 1 });
+  if (sort === "price_desc") dbQuery = dbQuery.sort({ price: -1 });
+  if (sort === "newest") dbQuery = dbQuery.sort({ createdAt: -1 });
+  if (sort === "oldest") dbQuery = dbQuery.sort({ createdAt: 1 });
+
+  const products = await dbQuery.exec();
+  res.json(products);
+});
+
+export default app;
 
 // Start the server
 mongoose
