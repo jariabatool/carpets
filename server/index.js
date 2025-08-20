@@ -268,6 +268,52 @@ app.get('/api/carpet-meta', async (req, res) => {
   }
 });
 
+// Get filter metadata for a subcategory
+app.get('/api/filter-meta', async (req, res) => {
+  const { subcategory } = req.query;
+
+  try {
+    const match = { subcategory };
+    
+    // Get unique colors and sizes from variants
+    const colors = await Carpet.aggregate([
+      { $match: match },
+      { $unwind: "$variants" },
+      { $group: { _id: "$variants.color" } },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    const sizes = await Carpet.aggregate([
+      { $match: match },
+      { $unwind: "$variants" },
+      { $group: { _id: "$variants.size" } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Get price range
+    const priceRange = await Carpet.aggregate([
+      { $match: match },
+      { $unwind: "$variants" },
+      {
+        $group: {
+          _id: null,
+          minPrice: { $min: "$variants.price" },
+          maxPrice: { $max: "$variants.price" }
+        }
+      }
+    ]);
+
+    res.json({
+      colors: colors.map(c => c._id).filter(c => c),
+      sizes: sizes.map(s => s._id).filter(s => s),
+      priceRange: priceRange[0] || { minPrice: 0, maxPrice: 10000 }
+    });
+  } catch (err) {
+    console.error('Error fetching filter meta:', err);
+    res.status(500).json({ error: 'Failed to fetch filter metadata' });
+  }
+});
+
 import Subcategory from './models/Subcategory.js';
 
 // Get all subcategories for homepage
