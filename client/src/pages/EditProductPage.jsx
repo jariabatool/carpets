@@ -7,7 +7,7 @@ export default function EditProductPage() {
 
   // Fetch all products (later filter by sellerId if needed)
   useEffect(() => {
-    fetch("http://localhost:5000/api/products") // adjust backend endpoint
+    fetch("http://localhost:5000/api/all-products") 
       .then((res) => res.json())
       .then((data) => setProducts(data))
       .catch((err) => console.error(err));

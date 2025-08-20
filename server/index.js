@@ -216,6 +216,17 @@ app.get("/products", async (req, res) => {
   }
 });
 
+// Get all products (for edit page)
+app.get("/api/all-products", async (req, res) => {
+  try {
+    const products = await Carpet.find();
+    res.json(products);
+  } catch (err) {
+    console.error("Error fetching all products:", err);
+    res.status(500).json({ error: "Failed to fetch products" })
+  }
+});
+
 // Update product for seller page
 // Update product by ID
 app.put("/products/:id", async (req, res) => {
