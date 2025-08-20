@@ -228,16 +228,52 @@ app.put("/api/products/:id", async (req, res) => {
 //     res.status(500).json({ error: "Server error" });
 //   }
 // });
-app.get('/api/carpet-meta', async (req, res) => {
+// Available filter options for a given category/subcategory
+app.get("/api/filter-meta", async (req, res) => {
+  const { type, subcategory } = req.query;
+
   try {
-    const types = await Carpet.distinct('type');
-    const subcategories = await Carpet.distinct('subcategory');
-    res.json({ types, subcategories });
+    const match = {};
+    if (type) match.type = type;
+    if (subcategory) match.subcategory = subcategory;
+
+    const colors = await Carpet.distinct("variants.color", match);
+    const sizes = await Carpet.distinct("variants.size", match);
+
+    // Price range (min & max across variants)
+    const prices = await Carpet.aggregate([
+      { $match: match },
+      { $unwind: "$variants" },
+      {
+        $group: {
+          _id: null,
+          minPrice: { $min: "$variants.price" },
+          maxPrice: { $max: "$variants.price" }
+        }
+      }
+    ]);
+
+    res.json({
+      colors,
+      sizes,
+      priceRange: prices[0] || { minPrice: 0, maxPrice: 0 }
+    });
   } catch (err) {
-    console.error('Error fetching carpet metadata:', err);
-    res.status(500).json({ error: 'Failed to fetch metadata' });
+    console.error("Error fetching filter meta:", err);
+    res.status(500).json({ error: "Failed to fetch filter options" });
   }
 });
+
+// app.get('/api/carpet-meta', async (req, res) => {
+//   try {
+//     const types = await Carpet.distinct('type');
+//     const subcategories = await Carpet.distinct('subcategory');
+//     res.json({ types, subcategories });
+//   } catch (err) {
+//     console.error('Error fetching carpet metadata:', err);
+//     res.status(500).json({ error: 'Failed to fetch metadata' });
+//   }
+// });
 
 // Get all products (later filter by sellerId) for seller page
 app.get("/products", async (req, res) => {
@@ -281,27 +317,48 @@ app.delete("/products/:id", async (req, res) => {
 });
 
 // filter product for category page
+// Filter products for category/subcategory page
 app.get("/api/filter-products", async (req, res) => {
   const { type, subcategory, priceMin, priceMax, color, size, sort } = req.query;
 
-  let query = { type, subcategory };
+  try {
+    let match = {};
+    if (type) match.type = type;
+    if (subcategory) match.subcategory = subcategory;
 
-  if (priceMin) query.price = { ...query.price, $gte: Number(priceMin) };
-  if (priceMax) query.price = { ...query.price, $lte: Number(priceMax) };
-  if (color) query.color = color;
-  if (size) query.size = size;
+    let variantMatch = {};
+    if (priceMin) variantMatch["variants.price"] = { ...variantMatch["variants.price"], $gte: Number(priceMin) };
+    if (priceMax) variantMatch["variants.price"] = { ...variantMatch["variants.price"], $lte: Number(priceMax) };
+    if (color) variantMatch["variants.color"] = color;
+    if (size) variantMatch["variants.size"] = size;
 
-  let dbQuery = Carpet.find(query);
+    const pipeline = [
+      { $match: match },
+      { $unwind: "$variants" },
+      { $match: variantMatch },
+      {
+        $group: {
+          _id: "$_id",
+          doc: { $first: "$$ROOT" }
+        }
+      },
+      { $replaceRoot: { newRoot: "$doc" } }
+    ];
 
-  // Sorting
-  if (sort === "price_asc") dbQuery = dbQuery.sort({ price: 1 });
-  if (sort === "price_desc") dbQuery = dbQuery.sort({ price: -1 });
-  if (sort === "newest") dbQuery = dbQuery.sort({ createdAt: -1 });
-  if (sort === "oldest") dbQuery = dbQuery.sort({ createdAt: 1 });
+    // Sorting
+    if (sort === "price_asc") pipeline.push({ $sort: { "variants.price": 1 } });
+    if (sort === "price_desc") pipeline.push({ $sort: { "variants.price": -1 } });
+    if (sort === "newest") pipeline.push({ $sort: { createdAt: -1 } });
+    if (sort === "oldest") pipeline.push({ $sort: { createdAt: 1 } });
 
-  const products = await dbQuery.exec();
-  res.json(products);
+    const products = await Carpet.aggregate(pipeline);
+    res.json(products);
+  } catch (err) {
+    console.error("Error filtering products:", err);
+    res.status(500).json({ error: "Failed to filter products" });
+  }
 });
+
 
 export default app;
 
