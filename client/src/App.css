@@ -1,215 +1,165 @@
-/* === Global & Theme === */
-body, html {
-  margin: 0;
-  padding: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background-color: #f7f5f2;
-  color: #222;
-  box-sizing: border-box;
-}
-
-#root {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
+/* App Container */
 .app-container {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-sizing: border-box;
+  min-height: 100vh;
 }
 
-.app-container.light {
-  background-color: #f7f5f2;
-  color: #222;
-}
-
-.app-container.dark {
-  background-color: #1a1a1a;
-  color: #f5f5f5;
-}
-
-/* === Theme Toggle === */
-.theme-toggle {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  background: #333;
-  color: #fff;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  z-index: 1000;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
-
-.theme-toggle:hover {
-  background: #000;
-}
-
-/* === Hero Banner === */
+/* Hero Banner */
 .hero-banner {
-  background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2w7ZHH4nK3F48ebiplvwLRvgJyp4S_6MQvA&s');
-  background-size: cover;
-  background-position: center;
-  height: 400px;
   width: 100%;
+  height: 60vh;
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), 
+              url('https://imamcarpets.com/cdn/shop/files/Luxury_rugs_and_carpets_for_home_flooring.png?v=1752103745') center/cover;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-}
-
-.hero-banner .overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.hero-banner h1 {
-  font-size: 3rem;
   color: white;
   text-align: center;
-  margin: 0;
-  z-index: 1;
 }
 
+.hero-content {
+  max-width: 800px;
+  padding: 0 20px;
+}
 
-/* === Product Section === */
+.hero-content h1 {
+  font-size: 3.5rem;
+  font-weight: 300;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.hero-content p {
+  font-size: 1.3rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Product Section */
 .product-section {
   width: 100%;
-  max-width: 1600px;
-  padding: 3rem 1rem;
-  margin: 0 auto;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  padding: 60px 0;
 }
 
-/* === Category Section === */
-.category-section {
+.content-wrapper {
   width: 100%;
-  padding: 2rem 1rem;
-  margin-bottom: 4rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.category-section {
+  margin-bottom: 80px;
   text-align: center;
-  box-sizing: border-box;
 }
 
 .category-section h2 {
-  font-size: 2rem;
-  margin-bottom: 1.2rem;
+  font-size: 2.2rem;
+  margin-bottom: 15px;
+  color: #2c3e50;
   text-transform: capitalize;
+  font-weight: 600;
 }
 
-/* === Button === */
+.subcategory-description {
+  text-align: center;
+  color: #7f8c8d;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* See More Button */
 .see-more {
-  margin-top: 1rem;
-  padding: 0.6rem 1.5rem;
-  border: none;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 1rem;
-  transition: background 0.3s ease, color 0.3s ease;
-}
-
-.app-container.light .see-more {
-  background-color: #222;
+  display: block;
+  margin: 30px auto 0;
+  padding: 12px 30px;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
   color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
-.app-container.light .see-more:hover {
-  background-color: #000;
+.see-more:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
 }
 
-.app-container.dark .see-more {
-  background-color: #f5f5f5;
-  color: #1a1a1a;
+/* Loading State */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  font-size: 1.5rem;
+  color: #7f8c8d;
 }
 
-.app-container.dark .see-more:hover {
-  background-color: #ccc;
-  color: #111;
-}
-
-/* === Responsive === */
-@media (max-width: 768px) {
-  .hero-banner h1 {
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .hero-content h1 {
+    font-size: 3rem;
+  }
+  
+  .category-section h2 {
     font-size: 2rem;
   }
+}
 
+@media (max-width: 768px) {
+  .hero-content h1 {
+    font-size: 2.5rem;
+  }
+  
+  .hero-content p {
+    font-size: 1.1rem;
+  }
+  
+  .product-section {
+    padding: 40px 0;
+  }
+  
+  .category-section {
+    margin-bottom: 60px;
+  }
+  
   .category-section h2 {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
+  }
+  
+  .subcategory-description {
+    font-size: 1rem;
   }
 }
-.cart-button {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  background: #333;
-  color: #fff;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  z-index: 1000;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
 
-.cart-button:hover {
-  background: #000;
+@media (max-width: 480px) {
+  .hero-banner {
+    height: 50vh;
+  }
+  
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+  
+  .hero-content p {
+    font-size: 1rem;
+  }
+  
+  .category-section h2 {
+    font-size: 1.6rem;
+  }
+  
+  .see-more {
+    padding: 10px 25px;
+    font-size: 0.9rem;
+  }
+  
+  .content-wrapper {
+    padding: 0 15px;
+  }
 }
-.top-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding: 1rem;
-}
-
-.manage-btn {
-  padding: 0.6rem 1.2rem;
-  font-size: 0.95rem;
-  background-color: #1a1a1a;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
-
-.manage-btn:hover {
-  background-color: #000;
-}
-
-.top-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding: 1rem;
-}
-.theme-toggle, .manage-btn, .profile-btn {
-  padding: 0.4rem 1rem;
-  border-radius: 6px;
-  background: #333;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-.theme-toggle:hover,
-.manage-btn:hover,
-.profile-btn:hover {
-  background: #555;
-}
-
-

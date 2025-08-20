@@ -8,6 +8,7 @@
 }
 
 .cart-icon {
+  margin-top: 0.4in;
   font-size: 1.8rem;
   position: relative;
   cursor: pointer;

@@ -206,76 +206,6 @@ app.put("/api/products/:id", async (req, res) => {
   }
 });
 
-// app.post("/api/products", async (req, res) => {
-//   try {
-//     const { name, description, images, variants, sellerId } = req.body;
-
-//     if (!sellerId) return res.status(400).json({ error: "Missing seller ID" });
-
-//     const newProduct = new Carpet({
-//       name,
-//       description,
-//       images,
-//       variants,
-//       sellerId
-//     });
-
-//     await newProduct.save();
-
-//     res.status(201).json({ success: true, product: newProduct });
-//   } catch (err) {
-//     console.error("Add product error:", err);
-//     res.status(500).json({ error: "Server error" });
-//   }
-// });
-// Available filter options for a given category/subcategory
-app.get("/api/filter-meta", async (req, res) => {
-  const { type, subcategory } = req.query;
-
-  try {
-    const match = {};
-    if (type) match.type = type;
-    if (subcategory) match.subcategory = subcategory;
-
-    const colors = await Carpet.distinct("variants.color", match);
-    const sizes = await Carpet.distinct("variants.size", match);
-
-    // Price range (min & max across variants)
-    const prices = await Carpet.aggregate([
-      { $match: match },
-      { $unwind: "$variants" },
-      {
-        $group: {
-          _id: null,
-          minPrice: { $min: "$variants.price" },
-          maxPrice: { $max: "$variants.price" }
-        }
-      }
-    ]);
-
-    res.json({
-      colors,
-      sizes,
-      priceRange: prices[0] || { minPrice: 0, maxPrice: 0 }
-    });
-  } catch (err) {
-    console.error("Error fetching filter meta:", err);
-    res.status(500).json({ error: "Failed to fetch filter options" });
-  }
-});
-
-// app.get('/api/carpet-meta', async (req, res) => {
-//   try {
-//     const types = await Carpet.distinct('type');
-//     const subcategories = await Carpet.distinct('subcategory');
-//     res.json({ types, subcategories });
-//   } catch (err) {
-//     console.error('Error fetching carpet metadata:', err);
-//     res.status(500).json({ error: 'Failed to fetch metadata' });
-//   }
-// });
-
-// Get all products (later filter by sellerId) for seller page
 app.get("/products", async (req, res) => {
   try {
     // const sellerId = req.user._id; // for now skip auth
@@ -316,48 +246,71 @@ app.delete("/products/:id", async (req, res) => {
   }
 });
 
-// filter product for category page
-// Filter products for category/subcategory page
-app.get("/api/filter-products", async (req, res) => {
-  const { type, subcategory, priceMin, priceMax, color, size, sort } = req.query;
-
+// category and sub category list for add and edit product
+// Get metadata for add product form
+app.get('/api/carpet-meta', async (req, res) => {
   try {
-    let match = {};
-    if (type) match.type = type;
-    if (subcategory) match.subcategory = subcategory;
-
-    let variantMatch = {};
-    if (priceMin) variantMatch["variants.price"] = { ...variantMatch["variants.price"], $gte: Number(priceMin) };
-    if (priceMax) variantMatch["variants.price"] = { ...variantMatch["variants.price"], $lte: Number(priceMax) };
-    if (color) variantMatch["variants.color"] = color;
-    if (size) variantMatch["variants.size"] = size;
-
-    const pipeline = [
-      { $match: match },
-      { $unwind: "$variants" },
-      { $match: variantMatch },
-      {
-        $group: {
-          _id: "$_id",
-          doc: { $first: "$$ROOT" }
-        }
-      },
-      { $replaceRoot: { newRoot: "$doc" } }
-    ];
-
-    // Sorting
-    if (sort === "price_asc") pipeline.push({ $sort: { "variants.price": 1 } });
-    if (sort === "price_desc") pipeline.push({ $sort: { "variants.price": -1 } });
-    if (sort === "newest") pipeline.push({ $sort: { createdAt: -1 } });
-    if (sort === "oldest") pipeline.push({ $sort: { createdAt: 1 } });
-
-    const products = await Carpet.aggregate(pipeline);
-    res.json(products);
+    const subcategories = await Subcategory.find({ isActive: true })
+      .select('name -_id')
+      .sort({ name: 1 });
+    
+    const subcategoryNames = subcategories.map(sc => sc.name);
+    
+    const types = await Carpet.distinct('type');
+    
+    res.json({
+      types: types.filter(t => t),
+      subcategories: subcategoryNames
+    });
   } catch (err) {
-    console.error("Error filtering products:", err);
-    res.status(500).json({ error: "Failed to filter products" });
+    console.error('Error fetching carpet meta:', err);
+    res.status(500).json({ error: 'Failed to fetch metadata' });
   }
 });
+
+import Subcategory from './models/Subcategory.js';
+
+// Get all subcategories for homepage
+app.get('/api/subcategories', async (req, res) => {
+  try {
+    const subcategories = await Subcategory.find({ isActive: true });
+    res.json(subcategories);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch subcategories' });
+  }
+});
+
+// Get specific subcategory details
+app.get('/api/subcategory/:name', async (req, res) => {
+  try {
+    const subcategory = await Subcategory.findOne({ 
+      name: req.params.name,
+      isActive: true 
+    });
+    
+    if (!subcategory) {
+      return res.status(404).json({ error: 'Subcategory not found' });
+    }
+    
+    res.json(subcategory);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch subcategory' });
+  }
+});
+
+// Get products by subcategory only (ignore type)
+app.get('/api/products/subcategory/:name', async (req, res) => {
+  try {
+    const products = await Carpet.find({ 
+      subcategory: req.params.name 
+    });
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
+
+
 
 
 export default app;

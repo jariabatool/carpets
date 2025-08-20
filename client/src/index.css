@@ -2,20 +2,49 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-.app-container {
-  width: 100%;
+
+/* FIXED: Remove flex centering from body */
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  width: 100% !important;
+  display: block !important; /* Changed from flex to block */
 }
 
+/* Ensure root takes full width */
+#root {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Force all containers to full width */
+.app-container,
+.category-full-page,
+.hero-banner,
+.product-section,
+.top-buttons {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Content wrapper for centering content within full width */
+.content-wrapper {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
 
 a {
   font-weight: 500;
@@ -24,14 +53,6 @@ a {
 }
 a:hover {
   color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
 }
 
 h1 {

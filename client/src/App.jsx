@@ -1,64 +1,87 @@
+// export default App;
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductSlider from './components/ProductSlider';
-import Cart from './components/Cart';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
 function App() {
+  const [subcategories, setSubcategories] = useState([]);
   const [previews, setPreviews] = useState({});
-  const [darkMode, setDarkMode] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
-    fetch('/api/products/preview')
+    // Fetch all subcategories
+    fetch('/api/subcategories')
       .then((res) => res.json())
-      .then((data) => setPreviews(data))
-      .catch((err) => console.error('Error fetching preview data:', err));
+      .then((subcategoriesData) => {
+        setSubcategories(subcategoriesData);
+        
+        // Then fetch previews for each subcategory (3 products each)
+        const previewPromises = subcategoriesData.map(subcategory => 
+          fetch(`/api/products?subcategory=${subcategory.name}&limit=3`)
+            .then(res => res.json())
+        );
+        
+        Promise.all(previewPromises)
+          .then(results => {
+            const previewsObj = {};
+            subcategoriesData.forEach((subcategory, index) => {
+              previewsObj[subcategory.name] = results[index];
+            });
+            setPreviews(previewsObj);
+            setLoading(false);
+          });
+      })
+      .catch(err => {
+        console.error('Error fetching data:', err);
+        setLoading(false);
+      });
   }, []);
 
-  const toggleTheme = () => setDarkMode(!darkMode);
+  if (loading) {
+    return (
+      <div className="app-container">
+        <div className="loading">Loading...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className={`app-container ${darkMode ? 'dark' : 'light'}`}>
-      <div className="top-buttons">
-        <button className="theme-toggle" onClick={toggleTheme}>
-          {darkMode ? '☀ Light Mode' : '🌙 Dark Mode'}
-        </button>
-
-        {user?.role === 'seller' && (
-          <button className="manage-btn" onClick={() => navigate("/manage-products")}>
-            🛠️ Manage Products
-          </button>
-        )}
+    <div className="app-container">
+      {/* Hero Banner */}
+      <div className="hero-banner">
+        <div className="hero-content">
+          <h1>Welcome to Our Carpet & Rug Store</h1>
+          <p>Discover beautiful handmade carpets and rugs for your home</p>
+        </div>
       </div>
 
-      {/* ✅ Only user sees cart */}
-      {/* {user?.role === 'user' && <Cart />} */}
-
-      <header className="hero-banner">
-        <div className="overlay">
-          <h1>Welcome to Our Carpet & Rug Store</h1>
-        </div>
-      </header>
-
+      {/* Product Sections */}
       <div className="product-section">
-        {Object.entries(previews).map(([key, products]) => {
-          const [type, subcategory] = key.split('-');
-          return (
-            <div key={key} className="category-section">
-              <h2>{subcategory} {type}</h2>
-              <ProductSlider products={products} />
-              <button
-                className="see-more"
-                onClick={() => navigate(`/category/${type}/${subcategory}`)}
-              >
-                See More
-              </button>
-            </div>
-          );
-        })}
+        <div className="content-wrapper">
+          {subcategories.map((subcategory) => {
+            const products = previews[subcategory.name] || [];
+            
+            return (
+              <div key={subcategory._id} className="category-section">
+                <h2>{subcategory.name}</h2>
+                {subcategory.description && (
+                  <p className="subcategory-description">{subcategory.description}</p>
+                )}
+                <ProductSlider products={products} />
+                <button
+                  className="see-more"
+                  onClick={() => navigate(`/subcategory/${subcategory.name}`)}
+                >
+                  See More
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

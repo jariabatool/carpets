@@ -1,29 +1,113 @@
 .category-full-page {
-  padding: 3rem 1rem;
-  text-align: center;
-  background-color: #f9f5f0;
+  width: 100%;
+  padding: 20px;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .category-full-page h1 {
+  text-align: center;
   font-size: 2.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 20px;
+  color: #2c3e50;
   text-transform: capitalize;
-  color: #333;
+  font-weight: 700;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.category-description {
+  text-align: center;
+  font-size: 1.1rem;
+  color: #7f8c8d;
+  margin-bottom: 40px;
+  max-width: 600px;
+  line-height: 1.6;
+  width: 100%;
+}
+
+.loading, .error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  font-size: 1.2rem;
+  width: 100%;
+}
+
+.loading {
+  color: #7f8c8d;
+}
+
+.error {
+  color: #e74c3c;
 }
 
 .back-btn {
-  margin-top: 2rem;
-  padding: 0.6rem 1.5rem;
-  font-size: 1rem;
-  background-color: #444;
+  display: block;
+  margin: 40px auto;
+  padding: 12px 24px;
+  background-color: #3498db;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
+  font-size: 1rem;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: background-color 0.3s ease;
 }
 
 .back-btn:hover {
-  background-color: #000;
+  background-color: #2980b9;
+  transform: translateY(-2px);
+}
+
+/* Product slider container should be full width but content centered */
+.product-slider-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Empty state styling */
+.category-full-page > p {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #95a5a6;
+  margin-top: 60px;
+  width: 100%;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .category-full-page {
+    padding: 15px;
+  }
+  
+  .category-full-page h1 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+  }
+  
+  .category-description {
+    font-size: 1rem;
+    margin-bottom: 30px;
+    padding: 0 15px;
+  }
+  
+  .back-btn {
+    margin: 30px auto;
+    padding: 10px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-full-page h1 {
+    font-size: 1.8rem;
+  }
+  
+  .category-description {
+    font-size: 0.95rem;
+  }
 }
