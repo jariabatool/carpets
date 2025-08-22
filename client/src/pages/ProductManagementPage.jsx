@@ -9,8 +9,8 @@ export default function ProductManagementPage() {
       <h2>🛠️ Product Management</h2>
       <div className="management-buttons">
         <button onClick={() => navigate("/add-product")}>➕ Add Product</button>
-        <button onClick={() => navigate("/edit-product")}>✏️ Edit/Update Product</button>
-        <button onClick={() => navigate("/delete-product")}>🗑️ Delete Product</button>
+        <button onClick={() => navigate("/edit-product")}>✏️ Edit/Delete Product</button>
+        <button onClick={() => navigate("/seller-orders")}>Orders</button>
       </div>
     </div>
   );
