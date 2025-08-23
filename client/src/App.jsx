@@ -1,4 +1,3 @@
-// export default App;
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductSlider from './components/ProductSlider';
@@ -19,7 +18,7 @@ function App() {
       .then((subcategoriesData) => {
         setSubcategories(subcategoriesData);
         
-        // Then fetch previews for each subcategory (3 products each)
+        // Fetch previews for each subcategory (3 products each - backend limit, but we'll still slice later)
         const previewPromises = subcategoriesData.map(subcategory => 
           fetch(`/api/products?subcategory=${subcategory.name}&limit=3`)
             .then(res => res.json())
@@ -59,11 +58,23 @@ function App() {
         </div>
       </div>
 
+      {/* New Seller Products Button */}
+      <div className="seller-products-cta">
+        <div className="content-wrapper">
+          <button 
+            className="sellers-cta-btn"
+            onClick={() => navigate('/sellers')}
+          >
+            🏪 See Products by Seller
+          </button>
+        </div>
+      </div>
+
       {/* Product Sections */}
       <div className="product-section">
         <div className="content-wrapper">
           {subcategories.map((subcategory) => {
-            const products = previews[subcategory.name] || [];
+            const products = (previews[subcategory.name] || []).slice(0, 2); // **LIMIT PRODUCTS TO MAX 2**
             
             return (
               <div key={subcategory._id} className="category-section">

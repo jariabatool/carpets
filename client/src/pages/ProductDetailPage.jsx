@@ -226,11 +226,11 @@ export default function ProductDetailPage() {
   if (!product) return <div className="loading">Loading...</div>;
 
   // ✅ Use variants (plural)
-  const colors = [...new Set(product.variant?.map(v => v.color))];
-  const sizes = [...new Set(product.variant?.map(v => v.size))];
+  const colors = [...new Set(product.variants?.map(v => v.color))];
+  const sizes = [...new Set(product.variants?.map(v => v.size))];
 
   // ✅ Match selected variant
-  const selectedVariant = product.variant?.find(
+  const selectedVariant = product.variants?.find(
     v => v.color === selectedColor && v.size === selectedSize
   );
 

@@ -32,7 +32,7 @@ export default function ProductSlider({ products }) {
           <ProductImageSlideshow images={product.images || [product.image]} />
           <div className="info">
             <h4>{product.name}</h4>
-            <p>${product.price}</p>
+            {/* <p>{product.description}</p> */}
           </div>
         </div>
       ))}

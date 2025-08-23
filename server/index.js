@@ -1009,6 +1009,81 @@ async function restoreInventory(products) {
   }
 }
 
+// app.post('/api/login', async (req, res) => {
+//   const { email, password } = req.body;
+
+//   try {
+//     const user = await User.findOne({ email });
+
+//     if (!user || user.password !== password) {
+//       return res.status(401).json({ message: 'Invalid credentials' });
+//     }
+
+//     res.json({ user: { _id: user._id, name: user.name, role: user.role, email: user.email } });
+//   } catch (err) {
+//     console.error('Login error:', err);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+//  });
+// server/index.js (or your main server file)
+// Add these endpoints to your existing server file
+
+// Registration endpoint
+// Add this to your server/index.js or routes file
+// Add this to your server/index.js or routes file
+app.post('/api/register', async (req, res) => {
+  try {
+    console.log('Registration request received:', req.body);
+    
+    const { name, email, password, role, companyName, businessAddress, taxId, businessPhone, businessEmail } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    // Create new user (no password hashing)
+    const newUser = new User({
+      name,
+      email,
+      password, // Store plain text password
+      role: role || 'buyer',
+      isApproved: role === 'buyer', // Auto-approve buyers, require approval for sellers
+      companyName,
+      businessAddress,
+      taxId,
+      businessPhone,
+      businessEmail
+    });
+
+    await newUser.save();
+    console.log('New user saved:', newUser);
+
+    res.status(201).json({ 
+      message: role === 'buyer' 
+        ? 'Registration successful! You can now login.' 
+        : 'Registration submitted! Please wait for admin approval.' 
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: errors.join(', ') });
+    }
+    
+    res.status(500).json({ message: 'Something went wrong. Please try again.' });
+  }
+});
+
+// Update your existing login endpoint to check for approval
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -1019,10 +1094,61 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    res.json({ user: { _id: user._id, name: user.name, role: user.role, email: user.email } });
+    // Check if user is approved (except for admin)
+    if (user.role !== 'admin' && !user.isApproved) {
+      return res.status(401).json({ message: 'Your account is pending approval' });
+    }
+
+    res.json({ 
+      user: { 
+        _id: user._id, 
+        name: user.name, 
+        role: user.role, 
+        email: user.email 
+      } 
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get pending approvals (admin only)
+app.get('/api/pending-approvals', async (req, res) => {
+  try {
+    console.log('Fetching pending approvals');
+    const pendingUsers = await User.find({ isApproved: false });
+    console.log('Found pending users:', pendingUsers.length);
+    res.status(200).json(pendingUsers);
+  } catch (error) {
+    console.error('Pending approvals error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Approve user (admin only)
+app.patch('/api/approve-user/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await User.findByIdAndUpdate(id, { isApproved: true });
+    res.status(200).json({ message: 'User approved successfully' });
+  } catch (error) {
+    console.error('Approve user error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Reject user (admin only)
+app.delete('/api/reject-user/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await User.findByIdAndDelete(id);
+    res.status(200).json({ message: 'User rejected successfully' });
+  } catch (error) {
+    console.error('Reject user error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -1180,6 +1306,45 @@ app.post("/api/products", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+// Get all sellers
+app.get('/api/sellers', async (req, res) => {
+  try {
+    const sellers = await User.find({ role: 'seller', isApproved: true })
+      .select('name email companyName businessAddress');
+    res.status(200).json(sellers);
+  } catch (error) {
+    console.error('Error fetching sellers:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Get seller by ID
+app.get('/api/sellers/:id', async (req, res) => {
+  try {
+    const seller = await User.findById(req.params.id)
+      .select('name email companyName businessAddress');
+    
+    if (!seller || seller.role !== 'seller') {
+      return res.status(404).json({ message: 'Seller not found' });
+    }
+    
+    res.status(200).json(seller);
+  } catch (error) {
+    console.error('Error fetching seller:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Get products by seller
+app.get('/api/sellers/:id/products', async (req, res) => {
+  try {
+    const products = await Product.find({ seller: req.params.id });
+    res.status(200).json(products);
+  } catch (error) {
+    console.error('Error fetching seller products:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
 
 // Update product by ID 
 app.put("/api/products/:id", async (req, res) => {
@@ -1246,7 +1411,7 @@ app.put("/products/:id", async (req, res) => {
 });
 
 // Delete product for seller page
-app.delete("/products/:id", async (req, res) => {
+app.delete("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await Carpet.findByIdAndDelete(id);
@@ -1468,6 +1633,223 @@ app.put('/api/orders/:id/status', async (req, res) => {
     session.endSession();
   }
 });
+
+// Get all sellers
+app.get('/api/admin/sellers', async (req, res) => {
+  try {
+    const sellers = await User.find({ role: 'seller' });
+    res.status(200).json(sellers);
+  } catch (error) {
+    console.error('Error fetching sellers:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Get all buyers
+app.get('/api/admin/buyers', async (req, res) => {
+  try {
+    const buyers = await User.find({ role: 'buyer' });
+    res.status(200).json(buyers);
+  } catch (error) {
+    console.error('Error fetching buyers:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Get seller details
+app.get('/api/admin/sellers/:id', async (req, res) => {
+  try {
+    const seller = await User.findById(req.params.id);
+    if (!seller || seller.role !== 'seller') {
+      return res.status(404).json({ message: 'Seller not found' });
+    }
+    res.status(200).json(seller);
+  } catch (error) {
+    console.error('Error fetching seller:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Get buyer details
+app.get('/api/admin/buyers/:id', async (req, res) => {
+  try {
+    const buyer = await User.findById(req.params.id);
+    if (!buyer || buyer.role !== 'buyer') {
+      return res.status(404).json({ message: 'Buyer not found' });
+    }
+    res.status(200).json(buyer);
+  } catch (error) {
+    console.error('Error fetching buyer:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Get seller's products
+app.get('/api/admin/sellers/:id/products', async (req, res) => {
+  try {
+    // Assuming you have a Product model with a seller field
+    const products = await Product.find({ seller: req.params.id });
+    res.status(200).json(products);
+  } catch (error) {
+    console.error('Error fetching seller products:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Get seller's orders
+app.get('/api/admin/sellers/:id/orders', async (req, res) => {
+  try {
+    // Assuming you have an Order model and Product model
+    // This might need to be adjusted based on your schema
+    const orders = await Order.find({ 
+      'items.product': { $in: await Product.find({ seller: req.params.id }).distinct('_id') }
+    }).populate('user', 'name email');
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching seller orders:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Get buyer's orders
+app.get('/api/admin/buyers/:id/orders', async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.params.id }).populate('items.product');
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching buyer orders:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+
+// Update seller
+app.put('/api/admin/sellers/:id', async (req, res) => {
+  try {
+    const { name, email, companyName, businessAddress, taxId, businessPhone, businessEmail, isApproved } = req.body;
+    
+    // Check if email already exists for another user
+    const existingUser = await User.findOne({ 
+      email, 
+      _id: { $ne: req.params.id } 
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+    
+    const updatedSeller = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        name,
+        email,
+        companyName,
+        businessAddress,
+        taxId,
+        businessPhone,
+        businessEmail,
+        isApproved
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedSeller) {
+      return res.status(404).json({ message: 'Seller not found' });
+    }
+    
+    res.status(200).json(updatedSeller);
+  } catch (error) {
+    console.error('Error updating seller:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: errors.join(', ') });
+    }
+    
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Update buyer
+app.put('/api/admin/buyers/:id', async (req, res) => {
+  try {
+    const { name, email, isApproved } = req.body;
+    
+    // Check if email already exists for another user
+    const existingUser = await User.findOne({ 
+      email, 
+      _id: { $ne: req.params.id } 
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+    
+    const updatedBuyer = await User.findByIdAndUpdate(
+      req.params.id,
+      { name, email, isApproved },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedBuyer) {
+      return res.status(404).json({ message: 'Buyer not found' });
+    }
+    
+    res.status(200).json(updatedBuyer);
+  } catch (error) {
+    console.error('Error updating buyer:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: errors.join(', ') });
+    }
+    
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Delete seller
+app.delete('/api/admin/sellers/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    // You might also want to delete associated products
+    await Product.deleteMany({ seller: req.params.id });
+    res.status(200).json({ message: 'Seller deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting seller:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Delete buyer
+app.delete('/api/admin/buyers/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Buyer deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting buyer:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Update order status
+app.patch('/api/admin/orders/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    res.status(200).json(order);
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
 
 // Add endpoint to handle payment confirmation (for cash on delivery orders)
 app.post('/api/orders/:id/confirm-payment', async (req, res) => {
