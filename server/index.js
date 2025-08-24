@@ -2275,7 +2275,6 @@ app.get('/api/products/subcategory/:name', async (req, res) => {
 // In your server code (e.g., /api/create-payment-intent)
 import Stripe from 'stripe';
 
-const stripe = new Stripe('sk_test_51RzdFt3B6rjlGaEZFAS8rTqeS6DkejQEYXLLF6tZZDdC0W2wQC2nxyJLIGt6scbS0NLPuzHc0HnLLFTBJrx0ZwdM006jWSgvFo');
 
 // Your endpoint handler
 app.post('/api/create-payment-intent', async (req, res) => {
