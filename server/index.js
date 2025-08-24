@@ -2272,6 +2272,39 @@ app.get('/api/products/subcategory/:name', async (req, res) => {
   }
 });
 
+// In your server code (e.g., /api/create-payment-intent)
+import Stripe from 'stripe';
+
+const stripe = new Stripe('sk_test_51RzdFt3B6rjlGaEZFAS8rTqeS6DkejQEYXLLF6tZZDdC0W2wQC2nxyJLIGt6scbS0NLPuzHc0HnLLFTBJrx0ZwdM006jWSgvFo');
+
+// Your endpoint handler
+app.post('/api/create-payment-intent', async (req, res) => {
+  try {
+    const { amount, currency, buyer } = req.body;
+    
+    // Create a PaymentIntent with the order amount and currency
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: currency,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        customer_name: buyer.name,
+        customer_email: buyer.email
+      }
+    });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret
+    });
+  } catch (error) {
+    res.status(400).send({
+      error: error.message
+    });
+  }
+});
+
 // Start the server
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
