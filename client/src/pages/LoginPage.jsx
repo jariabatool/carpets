@@ -1,68 +1,64 @@
-// // client/src/pages/LoginPage.jsx
-// import { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import './LoginPage.css';
+// import { createContext, useContext, useEffect, useState } from "react";
 
-// export default function LoginPage() {
-//   const [email, setEmail] = useState('');
-//   const [password, setPassword] = useState('');
-//   const navigate = useNavigate();
+// const AuthContext = createContext();
 
-//   const handleLogin = async (e) => {
-//     e.preventDefault();
-//     try {
-//       const res = await fetch('/api/login', {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({ email, password }),
-//       });
+// export function AuthProvider({ children }) {
+//   const [user, setUser] = useState(null);
+//   const [loading, setLoading] = useState(true);
+//   const [token, setToken] = useState(null);
 
-//       const data = await res.json();
+//   useEffect(() => {
+//     const savedUser = localStorage.getItem("user");
+//     const savedToken = localStorage.getItem("token");
+    
+//     if (savedUser) setUser(JSON.parse(savedUser));
+//     if (savedToken) setToken(savedToken);
+    
+//     setLoading(false);
+//   }, []);
 
-//       if (!res.ok) {
-//         alert(data.message || 'Login failed');
-//         return;
-//       }
+//   const login = (userData, authToken) => {
+//     localStorage.setItem("user", JSON.stringify(userData));
+//     localStorage.setItem("token", authToken);
+//     setUser(userData);
+//     setToken(authToken);
+//   };
 
-//       localStorage.setItem('user', JSON.stringify(data.user));
-//       if (data.user.role === 'seller') {
-//         navigate('/manage-products');
-//       } else {
-//         navigate('/');
-//       }
-//     } catch (err) {
-//       console.error('Login error:', err);
-//       alert('Something went wrong');
+//   const logout = () => {
+//     localStorage.removeItem("user");
+//     localStorage.removeItem("token");
+//     setUser(null);
+//     setToken(null);
+//   };
+
+//   // Function to make authenticated API calls
+//   const authFetch = async (url, options = {}) => {
+//     const headers = {
+//       'Content-Type': 'application/json',
+//       ...options.headers,
+//     };
+    
+//     if (token) {
+//       headers['Authorization'] = `Bearer ${token}`;
 //     }
+    
+//     return fetch(url, {
+//       ...options,
+//       headers,
+//     });
 //   };
 
 //   return (
-//     <div className="login-container">
-//       <h2>Login</h2>
-//       <form onSubmit={handleLogin}>
-//         <input
-//           type="email"
-//           placeholder="Email"
-//           value={email}
-//           onChange={(e) => setEmail(e.target.value)}
-//           required
-//         />
-//         <input
-//           type="password"
-//           placeholder="Password"
-//           value={password}
-//           onChange={(e) => setPassword(e.target.value)}
-//           required
-//         />
-//         <button type="submit">Login</button>
-//       </form>
-//     </div>
+//     <AuthContext.Provider value={{ user, token, login, logout, loading, authFetch }}>
+//       {children}
+//     </AuthContext.Provider>
 //   );
 // }
-// client/src/pages/LoginPage.jsx
-// client/src/pages/LoginPage.jsx
+
+// export const useAuth = () => useContext(AuthContext);
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Add Link import
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // Import the auth context
 import './LoginPage.css';
 
 export default function LoginPage() {
@@ -71,6 +67,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth(); // Get the login function from context
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -91,7 +88,8 @@ export default function LoginPage() {
         return;
       }
 
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // Use the auth context login function which will store both user and token
+      login(data.user, data.token);
       
       // Handle different user roles including admin
       if (data.user.role === 'admin') {
