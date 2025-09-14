@@ -1324,10 +1324,12 @@ import Subcategory from './models/Subcategory.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 
 // Create HTTP server and Socket.io
 const server = createServer(app);
@@ -1354,6 +1356,468 @@ io.on('connection', (socket) => {
 
 app.use(cors());
 app.use(express.json());
+
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads/reviews/';
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'review-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Accept images only
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Review Schema
+const reviewSchema = new mongoose.Schema({
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'Product'
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  userName: {
+    type: String,
+    required: true
+  },
+  userEmail: {
+    type: String,
+    required: true
+  },
+  rating: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5
+  },
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 100
+  },
+  comment: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 1000
+  },
+  images: [{
+    type: String // URLs of uploaded images
+  }],
+  isAnonymous: {
+    type: Boolean,
+    default: false
+  },
+  rememberDetails: {
+    type: Boolean,
+    default: false
+  },
+  // Store product information for easier access
+  productName: {
+    type: String
+  },
+  productImage: {
+    type: String
+  },
+  // Store seller information
+  sellerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  sellerName: {
+    type: String
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Index for better query performance
+reviewSchema.index({ productId: 1, createdAt: -1 });
+reviewSchema.index({ userId: 1 });
+reviewSchema.index({ userEmail: 1 });
+
+const Review = mongoose.model('Review', reviewSchema);
+
+// Review Routes
+
+// Get reviews for a product
+app.get('/api/reviews/product/:productId', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+
+    const reviews = await Review.find({ productId: req.params.productId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Review.countDocuments({ productId: req.params.productId });
+
+    // Calculate average rating
+    const averageRatingResult = await Review.aggregate([
+      { $match: { productId: new mongoose.Types.ObjectId(req.params.productId) } },
+      { $group: { _id: null, averageRating: { $avg: '$rating' } } }
+    ]);
+
+    const averageRating = averageRatingResult.length > 0 ? averageRatingResult[0].averageRating : 0;
+
+    res.json({
+      reviews,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalReviews: total,
+      averageRating: Math.round(averageRating * 10) / 10 // Round to 1 decimal place
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ message: 'Error fetching reviews', error: error.message });
+  }
+});
+
+// Get reviews by a user
+app.get('/api/reviews/user/:userId', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const reviews = await Review.find({ userId: req.params.userId })
+      .populate('productId', 'name images')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Review.countDocuments({ userId: req.params.userId });
+
+    res.json({
+      reviews,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalReviews: total
+    });
+  } catch (error) {
+    console.error('Error fetching user reviews:', error);
+    res.status(500).json({ message: 'Error fetching user reviews', error: error.message });
+  }
+});
+
+// Add a new review with image upload
+app.post('/api/reviews', upload.array('images', 5), async (req, res) => {
+  try {
+    const { productId, rating, title, comment, userName, userEmail, rememberDetails, isAnonymous } = req.body;
+    
+    // Validate required fields
+    if (!productId || !rating || !title || !comment || !userName || !userEmail) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Get product details to include in review
+    const Product = mongoose.model('Product');
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Get uploaded file paths
+    const imagePaths = req.files ? req.files.map(file => `/uploads/reviews/${file.filename}`) : [];
+    
+    const review = new Review({
+      productId,
+      rating: parseInt(rating),
+      title,
+      comment,
+      userName,
+      userEmail,
+      rememberDetails: rememberDetails === 'true',
+      isAnonymous: isAnonymous === 'true',
+      images: imagePaths,
+      // Store product info for easier querying
+      productName: product.name,
+      productImage: product.images && product.images.length > 0 ? product.images[0] : null,
+      // Store seller info if available
+      sellerId: product.sellerId || null,
+      sellerName: product.sellerName || null
+    });
+
+    await review.save();
+    
+    res.status(201).json(review);
+  } catch (error) {
+    // Clean up uploaded files if there was an error
+    if (req.files) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      });
+    }
+    console.error('Error creating review:', error);
+    res.status(400).json({ message: 'Error creating review', error: error.message });
+  }
+});
+
+// Update a review
+app.put('/api/reviews/:id', upload.array('images', 5), async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    // Get new uploaded file paths
+    const newImagePaths = req.files ? req.files.map(file => `/uploads/reviews/${file.filename}`) : [];
+    
+    // Combine existing images with new ones
+    const updatedImages = [...review.images, ...newImagePaths];
+
+    const { rating, title, comment, isAnonymous } = req.body;
+    
+    const updatedReview = await Review.findByIdAndUpdate(
+      req.params.id,
+      { 
+        rating: parseInt(rating),
+        title,
+        comment,
+        isAnonymous: isAnonymous === 'true',
+        images: updatedImages,
+        updatedAt: Date.now() 
+      },
+      { new: true, runValidators: true }
+    );
+    
+    res.json(updatedReview);
+  } catch (error) {
+    // Clean up uploaded files if there was an error
+    if (req.files) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      });
+    }
+    console.error('Error updating review:', error);
+    res.status(400).json({ message: 'Error updating review', error: error.message });
+  }
+});
+
+// Delete a review
+app.delete('/api/reviews/:id', async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    // Delete associated images
+    if (review.images && review.images.length > 0) {
+      review.images.forEach(imagePath => {
+        const fullPath = path.join(__dirname, imagePath);
+        if (fs.existsSync(fullPath)) {
+          fs.unlink(fullPath, (err) => {
+            if (err) console.error('Error deleting image file:', err);
+          });
+        }
+      });
+    }
+
+    await Review.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(500).json({ message: 'Error deleting review', error: error.message });
+  }
+});
+
+// Get review statistics for a product
+app.get('/api/reviews/stats/:productId', async (req, res) => {
+  try {
+    const stats = await Review.aggregate([
+      { $match: { productId: new mongoose.Types.ObjectId(req.params.productId) } },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$rating' },
+          totalReviews: { $sum: 1 },
+          ratingDistribution: {
+            $push: '$rating'
+          }
+        }
+      }
+    ]);
+
+    if (stats.length === 0) {
+      return res.json({
+        averageRating: 0,
+        totalReviews: 0,
+        ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+      });
+    }
+
+    // Calculate rating distribution
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    stats[0].ratingDistribution.forEach(rating => {
+      if (rating >= 1 && rating <= 5) {
+        distribution[rating]++;
+      }
+    });
+
+    res.json({
+      averageRating: Math.round(stats[0].averageRating * 10) / 10,
+      totalReviews: stats[0].totalReviews,
+      ratingDistribution: distribution
+    });
+  } catch (error) {
+    console.error('Error fetching review stats:', error);
+    res.status(500).json({ message: 'Error fetching review statistics', error: error.message });
+  }
+});
+
+// Seed initial reviews (optional - for testing)
+app.post('/api/reviews/seed/:productId', async (req, res) => {
+  try {
+    const Product = mongoose.model('Product');
+    const product = await Product.findById(req.params.productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const sampleReviews = [
+      {
+        productId: req.params.productId,
+        userName: 'John Doe',
+        userEmail: 'john@example.com',
+        rating: 5,
+        title: 'Excellent Product!',
+        comment: 'This product exceeded my expectations. The quality is outstanding and it looks even better in person.',
+        isAnonymous: false,
+        productName: product.name,
+        productImage: product.images && product.images.length > 0 ? product.images[0] : null,
+        sellerId: product.sellerId || null,
+        sellerName: product.sellerName || null,
+        createdAt: new Date('2023-10-15'),
+        updatedAt: new Date('2023-10-15')
+      },
+      {
+        productId: req.params.productId,
+        userName: 'Sarah Smith',
+        userEmail: 'sarah@example.com',
+        rating: 4,
+        title: 'Very Good, But...',
+        comment: 'I really like this product, but it was slightly smaller than I expected. Otherwise, great quality.',
+        isAnonymous: false,
+        productName: product.name,
+        productImage: product.images && product.images.length > 0 ? product.images[0] : null,
+        sellerId: product.sellerId || null,
+        sellerName: product.sellerName || null,
+        createdAt: new Date('2023-10-10'),
+        updatedAt: new Date('2023-10-10')
+      },
+      {
+        productId: req.params.productId,
+        userName: 'Anonymous',
+        userEmail: 'user@example.com',
+        rating: 3,
+        title: 'Average Product',
+        comment: 'It\'s okay for the price, but I\'ve seen better quality elsewhere.',
+        isAnonymous: true,
+        productName: product.name,
+        productImage: product.images && product.images.length > 0 ? product.images[0] : null,
+        sellerId: product.sellerId || null,
+        sellerName: product.sellerName || null,
+        createdAt: new Date('2023-10-05'),
+        updatedAt: new Date('2023-10-05')
+      },
+      {
+        productId: req.params.productId,
+        userName: 'Mike Johnson',
+        userEmail: 'mike@example.com',
+        rating: 5,
+        title: 'Absolutely Love It!',
+        comment: 'This product is perfect for my needs. The craftsmanship is exceptional and it arrived quickly.',
+        isAnonymous: false,
+        productName: product.name,
+        productImage: product.images && product.images.length > 0 ? product.images[0] : null,
+        sellerId: product.sellerId || null,
+        sellerName: product.sellerName || null,
+        createdAt: new Date('2023-09-28'),
+        updatedAt: new Date('2023-09-28')
+      },
+      {
+        productId: req.params.productId,
+        userName: 'Lisa Brown',
+        userEmail: 'lisa@example.com',
+        rating: 4,
+        title: 'Great Value',
+        comment: 'Good quality at a reasonable price. Would recommend to others looking for similar products.',
+        isAnonymous: false,
+        productName: product.name,
+        productImage: product.images && product.images.length > 0 ? product.images[0] : null,
+        sellerId: product.sellerId || null,
+        sellerName: product.sellerName || null,
+        createdAt: new Date('2023-09-20'),
+        updatedAt: new Date('2023-09-20')
+      }
+    ];
+
+    await Review.deleteMany({ productId: req.params.productId });
+    await Review.insertMany(sampleReviews);
+    
+    res.json({ message: 'Sample reviews added successfully' });
+  } catch (error) {
+    console.error('Error seeding reviews:', error);
+    res.status(500).json({ message: 'Error seeding reviews', error: error.message });
+  }
+});
 
 // Add a JWT secret key to your environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -2272,9 +2736,11 @@ app.get('/api/products/subcategory/:name', async (req, res) => {
   }
 });
 
+
 // In your server code (e.g., /api/create-payment-intent)
 import Stripe from 'stripe';
 
+const stripe = new Stripe('sk_test_51RzdFt3B6rjlGaEZFAS8rTqeS6DkejQEYXLLF6tZZDdC0W2wQC2nxyJLIGt6scbS0NLPuzHc0HnLLFTBJrx0ZwdM006jWSgvFo');
 
 // Your endpoint handler
 app.post('/api/create-payment-intent', async (req, res) => {

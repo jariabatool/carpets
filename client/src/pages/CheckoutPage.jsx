@@ -6,6 +6,7 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 import "./CheckoutPage.css";
 
 // Initialize Stripe with your publishable key
+const stripePromise = loadStripe("pk_test_51RzdFt3B6rjlGaEZ1O8GvIDiwb6ChXlLnvr8gnh7x8ms2sCXNCUaAbI2X598R46tO1tmMCgDy4QKd3AKRT4vmaLs00sKk8q4v4");
 
 // Country options with 2-letter codes
 const countryOptions = [
