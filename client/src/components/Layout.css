@@ -1,4 +1,4 @@
-/* client/src/components/Layout.css
+/* /* client/src/components/Layout.css
 
 .top-bar {
   display: flex;
@@ -51,7 +51,7 @@ body.dark .top-bar {
   align-items: center;  /* ✅ Vertical alignment 
   gap: 1rem;             /* ✅ Space between Cart, Theme, Profile
 } */
-/* Layout.css - Improved Header Styles */
+/* Layout.css - Improved Header Styles 
 
 .layout-header {
   display: flex;
@@ -85,7 +85,7 @@ body.dark .top-bar {
   gap: 1.5rem;
 }
 
-/* Header action items wrapper */
+/* Header action items wrapper 
 .header-actions {
   display: flex;
   align-items: center;
@@ -96,7 +96,7 @@ body.dark .top-bar {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Individual action items */
+/* Individual action items 
 .action-item {
   display: flex;
   align-items: center;
@@ -117,7 +117,7 @@ body.dark .top-bar {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Cart specific styles */
+/* Cart specific styles 
 .cart-wrapper {
   position: relative;
 }
@@ -145,19 +145,19 @@ body.dark .top-bar {
   font-weight: 600;
 }
 
-/* Theme toggle specific */
+/* Theme toggle specific 
 .theme-toggle-wrapper {
   display: flex;
   align-items: center;
 }
 
-/* Profile icon specific */
+/* Profile icon specific 
 .profile-icon-wrapper {
   display: flex;
   align-items: center;
 }
 
-/* Dark mode styles */
+/* Dark mode styles 
 body.dark .layout-header {
   background-color: var(--header-bg-dark, #2c3e50);
   border-bottom-color: var(--border-color-dark, #34495e);
@@ -180,7 +180,7 @@ body.dark .action-item:hover {
   background: var(--action-hover-bg-dark, #4a6572);
 }
 
-/* Responsive design */
+/* Responsive design 
 @media (max-width: 768px) {
   .layout-header {
     padding: 0.8rem 1rem;
@@ -225,3 +225,350 @@ body.dark .action-item:hover {
   }
 }
 
+/* Ensure proper layout with footer 
+html, body, #root {
+  height: 100%;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+}
+
+/* Smooth scrolling 
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar 
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #d2691e, #ffa500);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #b35917, #e59400);
+}
+
+/* Ensure proper layout 
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding-top: 80px; /* Adjust based on your header height 
+}
+
+/* Header styles 
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+}
+
+/* Responsive adjustments 
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem;
+  }
+  
+  .main-content {
+    padding-top: 70px;
+  }
+} */
+ /* Layout.css - Enhanced with new styles */
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.layout-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  backdrop-filter: blur(10px);
+}
+
+.layout-header-left .logo {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #d2691e, #ffa500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.layout-header-left .logo:hover {
+  transform: scale(1.05);
+}
+
+.layout-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: rgba(210, 105, 30, 0.1);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.action-item:hover {
+  background: rgba(210, 105, 30, 0.2);
+  border-color: #d2691e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(210, 105, 30, 0.2);
+}
+
+.action-icon {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+.action-text {
+  font-weight: 600;
+  color: #2c2c2c;
+  font-size: 0.9rem;
+}
+
+.cart-wrapper,
+.theme-toggle-wrapper,
+.profile-icon-wrapper,
+.nav-menu-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+/* Role-specific action items */
+.action-item[title*="Dashboard"] {
+  background: rgba(255, 107, 107, 0.1);
+  border-color: transparent;
+}
+
+.action-item[title*="Dashboard"]:hover {
+  background: rgba(255, 107, 107, 0.2);
+  border-color: #ff6b6b;
+}
+
+.action-item[title*="Products"] {
+  background: rgba(78, 205, 196, 0.1);
+  border-color: transparent;
+}
+
+.action-item[title*="Products"]:hover {
+  background: rgba(78, 205, 196, 0.2);
+  border-color: #4ecdc4;
+}
+
+.action-item[title*="Orders"] {
+  background: rgba(255, 230, 109, 0.1);
+  border-color: transparent;
+}
+
+.action-item[title*="Orders"]:hover {
+  background: rgba(255, 230, 109, 0.2);
+  border-color: #ffe66d;
+}
+
+.layout-main {
+  padding-top: 80px;
+  min-height: calc(100vh - 80px);
+  background: #f8f9fa;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .layout-header {
+    padding: 1rem;
+  }
+  
+  .action-text {
+    display: none;
+  }
+  
+  .action-item {
+    padding: 0.5rem;
+  }
+  
+  .action-icon {
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .layout-header-left,
+  .layout-header-right {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .header-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .layout-main {
+    padding-top: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .layout-header {
+    padding: 0.75rem;
+  }
+  
+  .layout-header-left .logo {
+    font-size: 1.2rem;
+  }
+  
+  .action-item {
+    padding: 0.4rem;
+    min-width: 40px;
+    justify-content: center;
+  }
+  
+  .header-actions {
+    gap: 0.25rem;
+  }
+}
+
+/* Animation for header elements */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.layout-header {
+  animation: slideDown 0.5s ease;
+}
+
+.action-item {
+  animation: slideDown 0.6s ease;
+}
+
+.action-item:nth-child(1) { animation-delay: 0.1s; }
+.action-item:nth-child(2) { animation-delay: 0.2s; }
+.action-item:nth-child(3) { animation-delay: 0.3s; }
+.action-item:nth-child(4) { animation-delay: 0.4s; }
+.action-item:nth-child(5) { animation-delay: 0.5s; }
+
+/* Navigation menu wrapper specific styles */
+.nav-menu-wrapper {
+  margin-left: 0.5rem;
+}
+
+/* Ensure the menu toggle button is properly styled in the header */
+.menu-toggle {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #d2691e, #ffa500);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.menu-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(210, 105, 30, 0.3);
+}
+
+/* Loading animation */
+.loading-container {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.loading-container::after {
+  content: '';
+  width: 40px;
+  height: 40px;
+  border: 3px solid #d2691e;
+  border-top: 3px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Enhanced focus states for accessibility */
+.action-item:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(210, 105, 30, 0.3);
+}
+
+.logo:focus {
+  outline: none;
+  text-shadow: 0 0 10px rgba(210, 105, 30, 0.5);
+}
