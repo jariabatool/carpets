@@ -500,6 +500,8 @@ export default function SellerDetailPage() {
     businessEmail: '',
     isApproved: false
   });
+ const params = useParams();
+ console.log("Route params:", params);
 
   useEffect(() => {
     fetchSellerDetails();
@@ -938,9 +940,9 @@ export default function SellerDetailPage() {
                       <p>Available: {product.availableQuantity || 0}</p>
                     </div>
                     <div className="item-actions">
-                      <Link to={`/edit-product/${product._id}`} className="edit-btn">
+                      {/* <Link to={`/edit-product/${product._id}`} className="edit-btn">
                         Edit
-                      </Link>
+                      </Link> */}
                       <button 
                         className="delete-btn"
                         onClick={() => handleDeleteProduct(product._id)}
@@ -987,9 +989,9 @@ export default function SellerDetailPage() {
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      <Link to={`/order/${order._id}`} className="view-btn">
+                      {/* <Link to={`/order/${order._id}`} className="view-btn">
                         View Details
-                      </Link>
+                      </Link> */}
                     </div>
                   </div>
                 ))}

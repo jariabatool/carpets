@@ -356,3 +356,60 @@ body.dark .cart-footer {
     margin: 0 auto;
   }
 }
+/* Add these styles to your existing Cart.css */
+
+.guest-warning {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.guest-warning p {
+  margin: 0;
+  color: #856404;
+  font-size: 0.9rem;
+}
+
+.login-link {
+  background: none;
+  border: none;
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-left: 0.25rem;
+  font-weight: 600;
+}
+
+.login-link:hover {
+  color: #0056b3;
+}
+
+.cart-item-count {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.checkout-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.checkout-btn:disabled:hover {
+  background: #ccc;
+  transform: none;
+  box-shadow: none;
+}
+
+/* User info in cart header */
+.cart-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

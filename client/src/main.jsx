@@ -146,7 +146,7 @@ createRoot(document.getElementById("root")).render(
                   <Route path="subcategory/:name" element={<SubcategoryPage />} />
                   <Route path="product/:id" element={<ProductDetailPage />} />
                   <Route path="/sellers" element={<SellersPage />} />
-                  <Route path="/seller/:sellerId/products" element={<SellerProductsPage />} />
+                  {/* <Route path="/seller/:sellerId/products" element={<SellerProductsPage />} /> */}
                   <Route path="checkout" element={<CheckoutPage />} />
                   <Route path="manage-products" element={<ProductManagementPage />} />
                   <Route path="add-product" element={<AddProductPage />} />
@@ -155,6 +155,11 @@ createRoot(document.getElementById("root")).render(
                   <Route path="seller-orders" element={<SellerOrdersPage />} /> 
                   <Route path="/admin/seller/:id" element={<SellerDetailPage />} />
                   <Route path="/admin/buyer/:id" element={<BuyerDetailPage />} />
+                  <Route path="/seller/:sellerId/products" element={<SellerProductsPage />} />
+                  {/* these two below are not in use for now */}
+                  <Route path="edit-product/:id" element={<EditProductPage />} />
+                  <Route path="order/:id" element={<OrdersPage />} />
+
                 </Route>
               </Routes>
             </BrowserRouter>

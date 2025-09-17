@@ -1365,7 +1365,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Configure multer for image uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -1402,6 +1402,8 @@ const upload = multer({
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
 
 // Review Schema
 const reviewSchema = new mongoose.Schema({
@@ -1819,6 +1821,114 @@ app.post('/api/reviews/seed/:productId', async (req, res) => {
   }
 });
 
+// Configure multer for product image uploads
+const productImageStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads/products/';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, 'product-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const productImageUpload = multer({
+  storage: productImageStorage,
+  fileFilter: fileFilter, // reuse same image filter
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  }
+});
+
+// app.post("/api/products", productImageUpload.array("images", 5), async (req, res) => {
+//   try {
+//     const { name, description, type, subcategory, sellerId } = req.body;
+
+//     // Parse variants (they come as JSON strings from frontend)
+//     let variants = [];
+//     if (req.body.variants) {
+//       if (Array.isArray(req.body.variants)) {
+//         variants = req.body.variants.map(v => JSON.parse(v));
+//       } else {
+//         variants = [JSON.parse(req.body.variants)];
+//       }
+//     }
+
+//     // Collect file paths
+//     const imagePaths = req.files.map(f => `/uploads/products/${f.filename}`);
+
+//     const totalQuantity = variants.reduce((sum, v) => sum + Number(v.quantity), 0);
+
+//     const newCarpet = new Carpet({
+//       name,
+//       description,
+//       type,
+//       subcategory,
+//       sellerId,
+//       variants,
+//       images: imagePaths,
+//       totalQuantity,
+//       availableQuantity: totalQuantity
+//     });
+
+//     await newCarpet.save();
+
+//     res.status(201).json({
+//       message: "Product added successfully",
+//       product: newCarpet
+//     });
+//   } catch (err) {
+//     console.error("Error adding product:", err);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// });
+// app.post("/api/products", upload.array("images", 5), async (req, res) => {
+//   try {
+//     const {
+//       name,
+//       description,
+//       type,
+//       subcategory,
+//       sellerId,
+//       variants
+//     } = req.body;
+
+//     // store only relative paths
+//     const imageUrls = req.files.map(file => `/uploads/products/${file.filename}`);
+
+//     const totalQuantity = variants.reduce((sum, v) => sum + parseInt(v.quantity), 0);
+//     const availableQuantity = totalQuantity;
+
+//     const newCarpet = new Carpet({
+//       name,
+//       description,
+//       type,
+//       subcategory,
+//       sellerId,
+//       images: imageUrls,   // ✅ save relative paths
+//       variants,
+//       totalQuantity,
+//       availableQuantity
+//     });
+
+//     await newCarpet.save();
+
+//     res.status(201).json({
+//       message: "Product added successfully",
+//       product: newCarpet
+//     });
+//   } catch (err) {
+//     console.error("Error adding product:", err);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// });
+
+//upload
+
 // Add a JWT secret key to your environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Homepage subcategories to preview
@@ -2139,6 +2249,17 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
+// Configure multer storage (separate folder so it won’t mix with your other usage)
+const productStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/products/"); // keep product uploads separate
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+
 app.post("/api/products", async (req, res) => {
   try {
     const {
@@ -2450,6 +2571,21 @@ app.get('/api/admin/buyers/:id/orders', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Something went wrong' });
   }
 });
+// backend/routes/products.js or wherever you handle products
+// backend route: get products by seller
+app.get('/api/sellers/:id/products', async (req, res) => {
+  try {
+    // explicitly cast id to string
+    const products = await Carpet.find({ sellerId: req.params.id });
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error('Error fetching seller products:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+
 // Seller endpoints
 app.get('/api/sellers', async (req, res) => {
   try {
@@ -2461,22 +2597,38 @@ app.get('/api/sellers', async (req, res) => {
     res.status(500).json({ message: 'Something went wrong' });
   }
 });
-
 app.get('/api/sellers/:id', async (req, res) => {
   try {
     const seller = await User.findById(req.params.id)
-      .select('name email companyName businessAddress');
+      .select('name email companyName businessAddress role');
     
-    if (!seller || seller.role !== 'seller') {
+    if (!seller) {
       return res.status(404).json({ message: 'Seller not found' });
     }
-    
+
+    // ✅ Don’t block if role !== 'seller'
     res.status(200).json(seller);
   } catch (error) {
     console.error('Error fetching seller:', error);
     res.status(500).json({ message: 'Something went wrong' });
   }
 });
+
+// app.get('/api/sellers/:id', async (req, res) => {
+//   try {
+//     const seller = await User.findById(req.params.id)
+//       .select('name email companyName businessAddress');
+    
+//     if (!seller || seller.role !== 'seller') {
+//       return res.status(404).json({ message: 'Seller not found' });
+//     }
+    
+//     res.status(200).json(seller);
+//   } catch (error) {
+//     console.error('Error fetching seller:', error);
+//     res.status(500).json({ message: 'Something went wrong' });
+//   }
+// });
 
 // Admin-specific endpoints
 app.get('/api/admin/sellers', authenticateToken, async (req, res) => {
