@@ -137,7 +137,6 @@ createRoot(document.getElementById("root")).render(
                 {/* Auth routes OUTSIDE layout */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
-
                 {/* All other routes inside layout */}
                 <Route path="/" element={<Layout />}>
                   <Route index element={<App />} />

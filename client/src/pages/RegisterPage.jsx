@@ -103,7 +103,12 @@ export default function RegisterPage() {
     <div className="register-container">
       <div className="register-card">
         <h2>Create Account</h2>
-        
+        <p className="website-info">
+          Welcome to <strong>Carpets & Rugs Marketplace</strong> —  
+          where global sellers meet buyers to trade unique designs, oriental patterns,  
+          and modern styles. Join today as a Buyer or Seller!
+        </p>
+
         <div className="user-type-selector">
           <button 
             type="button"
