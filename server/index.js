@@ -627,6 +627,51 @@ app.put("/api/products/:id", async (req, res) => {
   }
 });
 
+// Debug endpoint to check seller's products
+app.get('/api/debug/my-products', authenticateToken, async (req, res) => {
+  try {
+    console.log('🔍 Debug - User from token:', req.user);
+    console.log('🔍 Debug - Seller ID:', req.user.id);
+    
+    const sellerId = req.user.id;
+    
+    // Try different query formats
+    const products1 = await Carpet.find({ sellerId: sellerId });
+    const products2 = await Carpet.find({ sellerId: new mongoose.Types.ObjectId(sellerId) });
+    const products3 = await Carpet.find({}); // All products for debugging
+    
+    console.log('🔍 Products with string sellerId:', products1.length);
+    console.log('🔍 Products with ObjectId sellerId:', products2.length);
+    console.log('🔍 All products in database:', products3.length);
+    
+    // Log a few products to see their structure
+    if (products3.length > 0) {
+      console.log('🔍 Sample product structure:', {
+        _id: products3[0]._id,
+        name: products3[0].name,
+        sellerId: products3[0].sellerId,
+        sellerIdType: typeof products3[0].sellerId
+      });
+    }
+    
+    res.json({
+      user: req.user,
+      query1_count: products1.length,
+      query2_count: products2.length,
+      total_products: products3.length,
+      sample_product: products3.length > 0 ? {
+        _id: products3[0]._id,
+        name: products3[0].name,
+        sellerId: products3[0].sellerId,
+        sellerIdType: typeof products3[0].sellerId
+      } : null
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ message: 'Debug error', error: error.message });
+  }
+});
+
 app.delete("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -797,7 +842,44 @@ app.put('/api/orders/:id/status', async (req, res) => {
     session.endSession();
   }
 });
-
+// GET: Seller's own products (for logged-in seller)
+app.get('/api/my-products', authenticateToken, async (req, res) => {
+  try {
+    // Only sellers can access their own products
+    if (req.user.role !== 'seller') {
+      return res.status(403).json({ message: 'Access denied. Seller role required.' });
+    }
+    
+    const sellerId = req.user.id;
+    
+    console.log('🛒 Fetching products for seller:', sellerId);
+    
+    // Try multiple query formats to handle different sellerId formats
+    let products = await Carpet.find({ sellerId: sellerId });
+    
+    // If no products found, try with ObjectId conversion
+    if (products.length === 0 && mongoose.Types.ObjectId.isValid(sellerId)) {
+      products = await Carpet.find({ sellerId: new mongoose.Types.ObjectId(sellerId) });
+      console.log('🔄 Tried ObjectId conversion, found:', products.length);
+    }
+    
+    // If still no products, try string comparison
+    if (products.length === 0) {
+      const allProducts = await Carpet.find({});
+      products = allProducts.filter(product => 
+        product.sellerId && product.sellerId.toString() === sellerId
+      );
+      console.log('🔄 Tried string comparison, found:', products.length);
+    }
+    
+    console.log('📦 Final products found:', products.length);
+    
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching seller products:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
 app.post('/api/orders/:id/confirm-payment', async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();

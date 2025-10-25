@@ -69,16 +69,14 @@ export default function ProductDetailPage() {
 
   const fetchReviews = async (page) => {
     try {
-      const response = await fetch(`/api/reviews/product/${id}?page=${page}&limit=5`);
+      const response = await fetch(`/api/reviews/${id}`); // ✅ Matches your backend route
       const data = await response.json();
       
-      if (page === 1) {
-        setReviews(data.reviews);
-      } else {
-        setReviews([...reviews, ...data.reviews]);
-      }
-      setReviewPage(page);
-      setTotalReviewPages(data.totalPages);
+      console.log('Fetched reviews:', data); // Debug
+      
+      setReviews(data); // Your backend returns array directly, not paginated
+      setReviewPage(1);
+      setTotalReviewPages(1); // Since your backend doesn't paginate yet
     } catch (err) {
       console.error("Failed to load reviews:", err);
     }
@@ -86,13 +84,60 @@ export default function ProductDetailPage() {
 
   const fetchReviewStats = async () => {
     try {
-      const response = await fetch(`/api/reviews/stats/${id}`);
-      const data = await response.json();
-      setReviewStats(data);
+      // Since your backend doesn't have stats endpoint yet, calculate from reviews
+      if (reviews.length > 0) {
+        const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+        const totalReviews = reviews.length;
+        
+        // Calculate rating distribution
+        const ratingDistribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+        reviews.forEach(review => {
+          ratingDistribution[review.rating]++;
+        });
+        
+        setReviewStats({
+          averageRating,
+          totalReviews,
+          ratingDistribution
+        });
+      }
     } catch (err) {
       console.error("Failed to load review stats:", err);
     }
   };
+
+  // Update useEffect to recalc stats when reviews change
+  useEffect(() => {
+    if (reviews.length > 0) {
+      fetchReviewStats();
+    }
+  }, [reviews]);
+  // const fetchReviews = async (page) => {
+  //   try {
+  //     const response = await fetch(`/api/reviews/product/${id}?page=${page}&limit=5`);
+  //     const data = await response.json();
+      
+  //     if (page === 1) {
+  //       setReviews(data.reviews);
+  //     } else {
+  //       setReviews([...reviews, ...data.reviews]);
+  //     }
+  //     setReviewPage(page);
+  //     setTotalReviewPages(data.totalPages);
+  //   } catch (err) {
+  //     console.error("Failed to load reviews:", err);
+  //   }
+  // };
+
+  // const fetchReviewStats = async () => {
+  //   try {
+  //     const response = await fetch(`/api/reviews/stats/${id}`);
+  //     const data = await response.json();
+  //     setReviewStats(data);
+  //   } catch (err) {
+  //     console.error("Failed to load review stats:", err);
+  //   }
+  // };
 
   const handleReviewChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -126,111 +171,101 @@ export default function ProductDetailPage() {
     setImagePreviews(newPreviews);
   };
 
-  // const handleReviewSubmit = async (e) => {
-  //   e.preventDefault();
-    
-  //   try {
-  //     const formData = new FormData();
-      
-  //     // Append all form data
-  //     Object.keys(reviewData).forEach(key => {
-  //       if (key !== 'images') {
-  //         formData.append(key, reviewData[key]);
-  //       }
-  //     });
-      
-  //     // Append images
-  //     reviewImages.forEach((image) => {
-  //       formData.append('images', image);
-  //     });
-      
-  //     const url = editingReview ? `/api/reviews/${editingReview._id}` : '/api/reviews';
-  //     const method = editingReview ? 'PUT' : 'POST';
-      
-  //     const response = await fetch(url, {
-  //       method,
-  //       body: formData
-  //     });
-      
-  //     if (response.ok) {
-  //       const savedReview = await response.json();
-        
-  //       if (editingReview) {
-  //         setReviews(reviews.map(r => r._id === savedReview._id ? savedReview : r));
-  //       } else {
-  //         setReviews([savedReview, ...reviews]);
-  //       }
-        
-  //       // Save user details if requested
-  //       if (reviewData.rememberDetails) {
-  //         localStorage.setItem('reviewUserName', reviewData.userName);
-  //         localStorage.setItem('reviewUserEmail', reviewData.userEmail);
-  //       }
-        
-  //       // Refresh stats
-  //       fetchReviewStats();
-        
-  //       resetReviewForm();
-  //       setShowReviewForm(false);
-  //     } else {
-  //       console.error('Failed to submit review');
-  //       alert('Failed to submit review. Please try again.');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error submitting review:', error);
-  //     alert('Error submitting review. Please try again.');
-  //   }
-  // };
-
-  
   const handleReviewSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    const url = editingReview ? `/api/reviews/${editingReview._id}` : "/api/reviews";
-    const method = editingReview ? "PUT" : "POST";
-
-    const payload = {
-      carpetId: product._id,
-      userId: user._id,         // ensure logged-in user ID
-      rating: reviewData.rating,
-      comment: reviewData.comment,
-      userName: reviewData.userName,
-      userEmail: reviewData.userEmail,
-    };
-
-    const response = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (response.ok) {
-      const savedReview = await response.json();
-
-      if (editingReview) {
-        setReviews(reviews.map((r) => (r._id === savedReview._id ? savedReview : r)));
-      } else {
-        setReviews([savedReview, ...reviews]);
-      }
-
-      if (reviewData.rememberDetails) {
-        localStorage.setItem("reviewUserName", reviewData.userName);
-        localStorage.setItem("reviewUserEmail", reviewData.userEmail);
-      }
-
-      fetchReviewStats();
-      resetReviewForm();
-      setShowReviewForm(false);
-    } else {
-      console.error("Failed to submit review");
-      alert("Failed to submit review. Please try again.");
+    // Validate required fields for your backend
+    if (!reviewData.rating || !reviewData.comment) {
+      alert("Rating and comment are required");
+      return;
     }
-  } catch (error) {
-    console.error("Error submitting review:", error);
-    alert("Error submitting review. Please try again.");
-  }
-};
+
+    try {
+      const payload = {
+        carpetId: id,  // ✅ Matches your backend expectation
+        userId: user?._id, 
+        rating: parseInt(reviewData.rating),
+        comment: reviewData.comment,
+        // Add these if your backend supports them
+        userName: reviewData.userName || user?.name,
+        userEmail: reviewData.userEmail || user?.email
+      };
+
+      console.log('Submitting review:', payload);
+
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const savedReview = await response.json();
+        console.log('Review saved successfully:', savedReview);
+
+        // Refresh reviews
+        fetchReviews(1);
+        
+        resetReviewForm();
+        setShowReviewForm(false);
+      } else {
+        const errorText = await response.text();
+        console.error("Failed to submit review:", response.status, errorText);
+        alert("Failed to submit review. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      alert("Error submitting review. Please try again.");
+    }
+  };
+//   const handleReviewSubmit = async (e) => {
+//   e.preventDefault();
+
+//   try {
+//     const url = editingReview ? `/api/reviews/${editingReview._id}` : "/api/reviews";
+//     const method = editingReview ? "PUT" : "POST";
+
+//     const payload = {
+//       carpetId: product._id,
+//       userId: user._id,         // ensure logged-in user ID
+//       rating: reviewData.rating,
+//       comment: reviewData.comment,
+//       userName: reviewData.userName,
+//       userEmail: reviewData.userEmail,
+//     };
+
+//     const response = await fetch(url, {
+//       method,
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(payload),
+//     });
+
+//     if (response.ok) {
+//       const savedReview = await response.json();
+
+//       if (editingReview) {
+//         setReviews(reviews.map((r) => (r._id === savedReview._id ? savedReview : r)));
+//       } else {
+//         setReviews([savedReview, ...reviews]);
+//       }
+
+//       if (reviewData.rememberDetails) {
+//         localStorage.setItem("reviewUserName", reviewData.userName);
+//         localStorage.setItem("reviewUserEmail", reviewData.userEmail);
+//       }
+
+//       fetchReviewStats();
+//       resetReviewForm();
+//       setShowReviewForm(false);
+//     } else {
+//       console.error("Failed to submit review");
+//       alert("Failed to submit review. Please try again.");
+//     }
+//   } catch (error) {
+//     console.error("Error submitting review:", error);
+//     alert("Error submitting review. Please try again.");
+//   }
+// };
 
 
   const resetReviewForm = () => {
@@ -437,7 +472,7 @@ export default function ProductDetailPage() {
               <div className="info-section-content">
                 <p><span className="info-bold">Shipping Times:</span> Orders are typically processed and shipped within 2-3 business days. The estimated delivery time will vary depending on your location.</p>
                 <p><span className="info-bold">Shipping Costs:</span> Shipping costs will be calculated based on the delivery method chosen and the total weight and dimensions of the items in your order.</p>
-                <p><span className="info-bold">Returns:</span> We want you to be completely satisfied with your purchase from Musa Carpets. If you receive a product that is damaged or not as described, please contact us within 7 days of receiving the item.</p>
+                <p><span className="info-bold">Returns:</span> We want you to be completely satisfied with your purchase from Carpets & Rugs Store. If you receive a product that is damaged or not as described, please contact us within 7 days of receiving the item.</p>
                 <p><span className="info-bold">Refunds:</span> Upon receiving the returned item and verifying its condition, we will process a refund or replacement as per your preference.</p>
               </div>
             )}
@@ -689,11 +724,11 @@ export default function ProductDetailPage() {
                     <div className="review-header">
                       <div className="reviewer-info">
                         <div className="reviewer-avatar">
-                          {review.isAnonymous ? '👤' : review.userName.charAt(0).toUpperCase()}
+                          {review.userId?.name ? review.userId.name.charAt(0).toUpperCase() : 'U'}
                         </div>
                         <div>
                           <span className="reviewer-name">
-                            {review.isAnonymous ? 'Anonymous' : review.userName}
+                            {review.userId?.name || review.userName || 'User'}
                           </span>
                           <span className="review-date">
                             {new Date(review.createdAt).toLocaleDateString('en-US', { 
@@ -716,22 +751,11 @@ export default function ProductDetailPage() {
                       </div>
                     </div>
                     
-                    <h4 className="review-title">{review.title}</h4>
+                    {/* Remove title if not supported by backend */}
+                    {/* <h4 className="review-title">{review.title}</h4> */}
                     <p className="review-comment">{review.comment}</p>
                     
-                    {review.images && review.images.length > 0 && (
-                      <div className="review-images">
-                        {review.images.map((image, index) => (
-                          <img
-                            key={index}
-                            src={image}
-                            alt={`Review image ${index + 1}`}
-                            className="review-image"
-                          />
-                        ))}
-                      </div>
-                    )}
-                    
+                    {/* Keep edit/delete logic if needed */}
                     {canEditReview(review) && (
                       <div className="review-actions">
                         <button 
