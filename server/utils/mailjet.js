@@ -5,17 +5,81 @@ const mailjetClient = mailjet.apiConnect(
   '7b301e79eefb8816fc9c07dbe5fafc82'  // Your Secret Key
 );
 
-// Function to send email to customer
+// Helper function to get seller by ID
+// const getSellerById = async (sellerId) => {
+//   try {
+//     // Import your User model
+//     const User = await import('../models/User.js');
+    
+//     // Find seller by their MongoDB _id
+//     const seller = await User.default.findById(sellerId).select('name email businessEmail companyName');
+    
+//     if (!seller) {
+//       console.log('Seller not found for ID:', sellerId);
+//       return null;
+//     }
+    
+//     // Use business email if available, otherwise use personal email
+//     const sellerEmail = seller.businessEmail || seller.email;
+    
+//     return {
+//       email: sellerEmail,
+//       name: seller.name || 'Seller',
+//       companyName: seller.companyName || ''
+//     };
+//   } catch (error) {
+//     console.error('Error fetching seller:', error);
+//     return null;
+//   }
+// };
+// Helper function to get seller by ID - UPDATED VERSION
+const getSellerById = async (sellerId) => {
+  try {
+    console.log('🔍 Looking up seller with ID:', sellerId);
+    
+    // Import your User model - make sure path is correct
+    const User = await import('../models/User.js').then(module => module.default || module);
+    
+    // Find seller by their MongoDB _id
+    const seller = await User.findById(sellerId).select('name email businessEmail companyName');
+    
+    if (!seller) {
+      console.log('❌ Seller not found for ID:', sellerId);
+      return null;
+    }
+    
+    // Use business email if available, otherwise use personal email
+    const sellerEmail = seller.businessEmail || seller.email;
+    
+    console.log('✅ Found seller:', {
+      name: seller.name,
+      email: sellerEmail,
+      companyName: seller.companyName
+    });
+    
+    return {
+      email: sellerEmail,
+      name: seller.name || 'Seller',
+      companyName: seller.companyName || ''
+    };
+  } catch (error) {
+    console.error('❌ Error fetching seller:', error);
+    return null;
+  }
+};
+// Function to send email to customer - UPDATED VERSION
 export const sendOrderConfirmationEmail = async (order, customerEmail, customerName) => {
   try {
+    console.log('📧 Sending confirmation email to:', customerEmail);
+    
     const request = mailjetClient
       .post('send', { version: 'v3.1' })
       .request({
         Messages: [
           {
             From: {
-              Email: "browndoor668@gmail.com", // Replace with your email
-              Name: "Carpets & Rugs Store"
+              Email: "browndoor668@gmail.com",
+              Name: "Carpets and Rugs Store"
             },
             To: [
               {
@@ -23,7 +87,7 @@ export const sendOrderConfirmationEmail = async (order, customerEmail, customerN
                 Name: customerName
               }
             ],
-            Subject: `Order Confirmation - #${order._id.slice(-6).toUpperCase()}`,
+            Subject: `Order Confirmation - #${order._id.toString().slice(-6).toUpperCase()}`,
             HTMLPart: `
               <!DOCTYPE html>
               <html>
@@ -43,7 +107,7 @@ export const sendOrderConfirmationEmail = async (order, customerEmail, customerN
                 <div class="container">
                   <div class="header">
                     <h1>🎉 Order Confirmed!</h1>
-                    <p>Thank you for shopping with Carpets & Rugs Store</p>
+                    <p>Thank you for shopping with Carpets and Rugs Store</p>
                   </div>
                   <div class="content">
                     <p>Dear <strong>${customerName}</strong>,</p>
@@ -51,8 +115,8 @@ export const sendOrderConfirmationEmail = async (order, customerEmail, customerN
                     
                     <div class="order-details">
                       <h3>Order Details</h3>
-                      <p><strong>Order ID:</strong> ${order._id.slice(-6).toUpperCase()}</p>
-                      <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+                      <p><strong>Order ID:</strong> #${order._id.toString().slice(-6).toUpperCase()}</p>
+                      <p><strong>Order Date:</strong> ${new Date(order.createdAt || new Date()).toLocaleDateString()}</p>
                       <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
                       <p><strong>Status:</strong> ${order.status}</p>
                     </div>
@@ -84,7 +148,7 @@ export const sendOrderConfirmationEmail = async (order, customerEmail, customerN
                       
                       <div class="product-item total">
                         <div><strong>Total Amount</strong></div>
-                        <div>$${order.totalAmount?.toFixed(2)}</div>
+                        <div>$${(order.totalAmount + (order.deliveryCharges || 0)).toFixed(2)}</div>
                       </div>
                     </div>
 
@@ -94,8 +158,8 @@ export const sendOrderConfirmationEmail = async (order, customerEmail, customerN
                   </div>
                   
                   <div class="footer">
-                    <p>Best regards,<br>Carpets & Rugs Store Team</p>
-                    <p>📞 +1 (555) 123-4567 | ✉️ support@CarpetsRugsStore.com</p>
+                    <p>Best regards,<br>The Carpets and Rugs Team</p>
+                    <p>📞 +1 (555) 123-4567 | ✉️ browndoor668@gmail.com</p>
                   </div>
                 </div>
               </body>
@@ -106,16 +170,15 @@ export const sendOrderConfirmationEmail = async (order, customerEmail, customerN
       });
 
     const result = await request;
-    console.log('Order confirmation email sent to customer:', customerEmail);
+    console.log('✅ Order confirmation email sent to customer:', customerEmail);
     return result;
   } catch (error) {
-    console.error('Error sending order confirmation email:', error);
+    console.error('❌ Error sending order confirmation email:', error);
     throw error;
   }
 };
-
 // Function to send email to seller
-export const sendNewOrderNotificationToSeller = async (order, sellerEmail, sellerName) => {
+export const sendNewOrderNotificationToSeller = async (order, sellerEmail, sellerName, companyName = '') => {
   try {
     const request = mailjetClient
       .post('send', { version: 'v3.1' })
@@ -124,7 +187,7 @@ export const sendNewOrderNotificationToSeller = async (order, sellerEmail, selle
           {
             From: {
               Email: "browndoor668@gmail.com", // Replace with your email
-              Name: "Carpets & Rugs Store - Orders"
+              Name: "Carpets and Rugs Store - Orders"
             },
             To: [
               {
@@ -132,7 +195,7 @@ export const sendNewOrderNotificationToSeller = async (order, sellerEmail, selle
                 Name: sellerName
               }
             ],
-            Subject: `New Order Received - #${order._id.slice(-6).toUpperCase()}`,
+            Subject: `New Order Received${companyName ? ` - ${companyName}` : ''} - #${order._id.slice(-6).toUpperCase()}`,
             HTMLPart: `
               <!DOCTYPE html>
               <html>
@@ -151,7 +214,7 @@ export const sendNewOrderNotificationToSeller = async (order, sellerEmail, selle
               <body>
                 <div class="container">
                   <div class="header">
-                    <h1>🛍️ New Order Received!</h1>
+                    <h1>🛍️ New Order Received${companyName ? ` for ${companyName}` : ''}!</h1>
                     <p>You have a new order that requires your attention</p>
                   </div>
                   <div class="content">
@@ -179,7 +242,7 @@ export const sendNewOrderNotificationToSeller = async (order, sellerEmail, selle
 
                     <div class="order-details">
                       <h3>Order Items From Your Store</h3>
-                      ${order.products.filter(product => product.sellerId === sellerEmail).map(product => `
+                      ${order.products.map(product => `
                         <div class="product-item">
                           <div>
                             <strong>${product.name}</strong>
@@ -194,7 +257,6 @@ export const sendNewOrderNotificationToSeller = async (order, sellerEmail, selle
                       <div class="product-item total">
                         <div><strong>Subtotal (Your Products)</strong></div>
                         <div>$${order.products
-                          .filter(product => product.sellerId === sellerEmail)
                           .reduce((sum, product) => sum + (product.price * product.quantity), 0)
                           .toFixed(2)}</div>
                       </div>
@@ -212,7 +274,7 @@ export const sendNewOrderNotificationToSeller = async (order, sellerEmail, selle
                   </div>
                   
                   <div style="text-align: center; margin-top: 20px; padding: 20px; background: #e9ecef; border-radius: 5px;">
-                    <p>Best regards,<br>Carpets & Rugs Store Team</p>
+                    <p>Best regards,<br>Carpets and Rugs Team</p>
                   </div>
                 </div>
               </body>
@@ -234,38 +296,37 @@ export const sendNewOrderNotificationToSeller = async (order, sellerEmail, selle
 // Main function to send all order emails
 export const sendOrderEmails = async (order) => {
   try {
+    console.log('Starting to send order emails for order:', order._id);
+    
     // Send email to customer
     await sendOrderConfirmationEmail(order, order.buyer.email, order.buyer.name);
+    console.log('Customer email sent to:', order.buyer.email);
     
-    // Get unique sellers from the order
-    const uniqueSellers = [...new Set(order.products.map(product => product.sellerId))];
+    // Get unique seller IDs from the order
+    const uniqueSellerIds = [...new Set(order.products.map(product => product.sellerId))];
+    console.log('Found sellers for order:', uniqueSellerIds);
     
-    // Send email to each seller (you'll need to get seller emails from your database)
-    for (const sellerId of uniqueSellers) {
-      // In a real application, you'd fetch seller details from database
-      // For now, we'll use a placeholder - you'll need to implement this
-      const seller = await getSellerById(sellerId);
-      if (seller && seller.email) {
-        await sendNewOrderNotificationToSeller(order, seller.email, seller.name || 'Seller');
+    // Send email to each seller
+    for (const sellerId of uniqueSellerIds) {
+      try {
+        const seller = await getSellerById(sellerId);
+        
+        if (seller && seller.email) {
+          console.log('Sending email to seller:', seller.email);
+          await sendNewOrderNotificationToSeller(order, seller.email, seller.name, seller.companyName);
+          console.log('Seller email sent successfully to:', seller.email);
+        } else {
+          console.log('Seller not found or no email for ID:', sellerId);
+        }
+      } catch (sellerError) {
+        console.error(`Failed to send email to seller ${sellerId}:`, sellerError);
+        // Continue with other sellers even if one fails
       }
     }
     
-    console.log('All order emails sent successfully');
+    console.log('All order emails processed for order:', order._id);
   } catch (error) {
-    console.error('Error sending order emails:', error);
+    console.error('Error in sendOrderEmails:', error);
     // Don't throw error here to prevent order creation from failing
-  }
-};
-
-// Helper function to get seller by ID (you need to implement this based on your database)
-const getSellerById = async (sellerId) => {
-  try {
-    // This is a placeholder - implement based on your User model
-    const User = await import('../models/User.js');
-    const seller = await User.default.findById(sellerId);
-    return seller;
-  } catch (error) {
-    console.error('Error fetching seller:', error);
-    return null;
   }
 };

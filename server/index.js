@@ -11,7 +11,7 @@ import Subcategory from './models/Subcategory.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import Review from "./models/Review.js";
-
+import { sendOrderEmails } from './utils/mailjet.js';
 
 dotenv.config();
 
@@ -145,89 +145,6 @@ const productImageUpload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB
   }
 });
-
-// app.post("/api/products", productImageUpload.array("images", 5), async (req, res) => {
-//   try {
-//     const { name, description, type, subcategory, sellerId } = req.body;
-
-//     // Parse variants (they come as JSON strings from frontend)
-//     let variants = [];
-//     if (req.body.variants) {
-//       if (Array.isArray(req.body.variants)) {
-//         variants = req.body.variants.map(v => JSON.parse(v));
-//       } else {
-//         variants = [JSON.parse(req.body.variants)];
-//       }
-//     }
-
-//     // Collect file paths
-//     const imagePaths = req.files.map(f => `/uploads/products/${f.filename}`);
-
-//     const totalQuantity = variants.reduce((sum, v) => sum + Number(v.quantity), 0);
-
-//     const newCarpet = new Carpet({
-//       name,
-//       description,
-//       type,
-//       subcategory,
-//       sellerId,
-//       variants,
-//       images: imagePaths,
-//       totalQuantity,
-//       availableQuantity: totalQuantity
-//     });
-
-//     await newCarpet.save();
-
-//     res.status(201).json({
-//       message: "Product added successfully",
-//       product: newCarpet
-//     });
-//   } catch (err) {
-//     console.error("Error adding product:", err);
-//     res.status(500).json({ error: "Internal server error" });
-//   }
-// });
-// app.post("/api/products", upload.array("images", 5), async (req, res) => {
-//   try {
-//     const {
-//       name,
-//       description,
-//       type,
-//       subcategory,
-//       sellerId,
-//       variants
-//     } = req.body;
-
-//     // store only relative paths
-//     const imageUrls = req.files.map(file => `/uploads/products/${file.filename}`);
-
-//     const totalQuantity = variants.reduce((sum, v) => sum + parseInt(v.quantity), 0);
-//     const availableQuantity = totalQuantity;
-
-//     const newCarpet = new Carpet({
-//       name,
-//       description,
-//       type,
-//       subcategory,
-//       sellerId,
-//       images: imageUrls,   // ✅ save relative paths
-//       variants,
-//       totalQuantity,
-//       availableQuantity
-//     });
-
-//     await newCarpet.save();
-
-//     res.status(201).json({
-//       message: "Product added successfully",
-//       product: newCarpet
-//     });
-//   } catch (err) {
-//     console.error("Error adding product:", err);
-//     res.status(500).json({ error: "Internal server error" });
-//   }
-// });
 
 //upload
 
@@ -693,6 +610,60 @@ app.get("/api/all-products", async (req, res) => {
 });
 
 // Order endpoints
+// app.post("/api/orders", async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const {
+//       buyer,
+//       products,
+//       totalAmount,
+//       deliveryCharges,
+//       paymentMethod
+//     } = req.body;
+
+//     const paid = paymentMethod === 'online';
+
+//     if (!Array.isArray(products) || products.length === 0) {
+//       await session.abortTransaction();
+//       return res.status(400).json({ error: 'Products are required' });
+//     }
+
+//     const order = new Order({
+//       buyer,
+//       products,
+//       totalAmount,
+//       deliveryCharges,
+//       paymentMethod,
+//       paid,
+//       status: 'pending'
+//     });
+
+//     await order.save({ session });
+
+//     if (paid) {
+//       await deductInventory(products);
+//     }
+
+//     const populatedOrder = await Order.findById(order._id).populate('products.productId').session(session);
+
+//     const uniqueSellerIds = [...new Set(products.map(p => p.sellerId))];
+//     uniqueSellerIds.forEach(sellerId => {
+//       io.to(`seller-${sellerId}`).emit('new-order', populatedOrder);
+//     });
+
+//     await session.commitTransaction();
+//     res.status(201).json({ message: 'Order saved successfully', order: populatedOrder });
+//   } catch (err) {
+//     await session.abortTransaction();
+//     console.error('Order creation error:', err);
+//     res.status(500).json({ message: 'Failed to save order' });
+//   } finally {
+//     session.endSession();
+//   }
+// });
+// Order endpoints - UPDATED VERSION
 app.post("/api/orders", async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -703,7 +674,8 @@ app.post("/api/orders", async (req, res) => {
       products,
       totalAmount,
       deliveryCharges,
-      paymentMethod
+      paymentMethod,
+      paymentIntentId
     } = req.body;
 
     const paid = paymentMethod === 'online';
@@ -720,6 +692,7 @@ app.post("/api/orders", async (req, res) => {
       deliveryCharges,
       paymentMethod,
       paid,
+      paymentIntentId: paymentIntentId || null,
       status: 'pending'
     });
 
@@ -731,13 +704,22 @@ app.post("/api/orders", async (req, res) => {
 
     const populatedOrder = await Order.findById(order._id).populate('products.productId').session(session);
 
+    // ✅ ADD THIS: Send emails after successful order creation
+    console.log('📧 Starting to send order emails...');
+    await sendOrderEmails(populatedOrder);
+    console.log('✅ Order emails sent successfully');
+
     const uniqueSellerIds = [...new Set(products.map(p => p.sellerId))];
     uniqueSellerIds.forEach(sellerId => {
       io.to(`seller-${sellerId}`).emit('new-order', populatedOrder);
     });
 
     await session.commitTransaction();
-    res.status(201).json({ message: 'Order saved successfully', order: populatedOrder });
+    
+    res.status(201).json({ 
+      message: 'Order saved successfully', 
+      order: populatedOrder 
+    });
   } catch (err) {
     await session.abortTransaction();
     console.error('Order creation error:', err);
