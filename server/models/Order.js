@@ -23,9 +23,23 @@ const orderSchema = new mongoose.Schema(
     ],
     totalAmount: Number,
     deliveryCharges: Number,
+    // Enhanced coupon fields
+    couponApplied: {
+      code: String,
+      discountAmount: Number,
+      couponId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Coupon"
+      },
+      originalTotal: Number, // Store original total before discount
+      discountType: String, // 'percentage' or 'fixed'
+      discountValue: Number // The actual discount value (percentage or amount)
+    },
+    finalAmount: Number,
     paymentMethod: String,
     paid: Boolean,
     status: { type: String, default: "pending" },
+    paymentIntentId: String,
   },
   { timestamps: true }
 );

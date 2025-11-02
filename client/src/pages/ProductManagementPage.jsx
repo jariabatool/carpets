@@ -12,6 +12,7 @@ export default function ProductManagementPage() {
         <button onClick={() => navigate("/edit-product")}>✏️ Edit/Delete Product</button>
         <button onClick={() => navigate("/seller-orders")} >📋 Orders</button>
         <button onClick={() => navigate("/my-products")}>📦 My Products</button>
+        <button onClick={() => navigate("/seller/coupons")}>🎫 Manage Coupons</button>
       </div>
     </div>
   );

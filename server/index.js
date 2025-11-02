@@ -11,6 +11,7 @@ import Subcategory from './models/Subcategory.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import Review from "./models/Review.js";
+import Coupon from './models/Coupon.js';
 import crypto from 'crypto';
 import { sendOrderEmails, 
   sendOrderStatusUpdateEmail, 
@@ -925,245 +926,7 @@ app.get("/api/all-products", async (req, res) => {
   }
 });
 
-// Order endpoints
-// app.post("/api/orders", async (req, res) => {
-//   const session = await mongoose.startSession();
-//   session.startTransaction();
-
-//   try {
-//     const {
-//       buyer,
-//       products,
-//       totalAmount,
-//       deliveryCharges,
-//       paymentMethod
-//     } = req.body;
-
-//     const paid = paymentMethod === 'online';
-
-//     if (!Array.isArray(products) || products.length === 0) {
-//       await session.abortTransaction();
-//       return res.status(400).json({ error: 'Products are required' });
-//     }
-
-//     const order = new Order({
-//       buyer,
-//       products,
-//       totalAmount,
-//       deliveryCharges,
-//       paymentMethod,
-//       paid,
-//       status: 'pending'
-//     });
-
-//     await order.save({ session });
-
-//     if (paid) {
-//       await deductInventory(products);
-//     }
-
-//     const populatedOrder = await Order.findById(order._id).populate('products.productId').session(session);
-
-//     const uniqueSellerIds = [...new Set(products.map(p => p.sellerId))];
-//     uniqueSellerIds.forEach(sellerId => {
-//       io.to(`seller-${sellerId}`).emit('new-order', populatedOrder);
-//     });
-
-//     await session.commitTransaction();
-//     res.status(201).json({ message: 'Order saved successfully', order: populatedOrder });
-//   } catch (err) {
-//     await session.abortTransaction();
-//     console.error('Order creation error:', err);
-//     res.status(500).json({ message: 'Failed to save order' });
-//   } finally {
-//     session.endSession();
-//   }
-// });
-// Order endpoints - UPDATED VERSION
-app.post("/api/orders", async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const {
-      buyer,
-      products,
-      totalAmount,
-      deliveryCharges,
-      paymentMethod,
-      paymentIntentId
-    } = req.body;
-
-    const paid = paymentMethod === 'online';
-
-    if (!Array.isArray(products) || products.length === 0) {
-      await session.abortTransaction();
-      return res.status(400).json({ error: 'Products are required' });
-    }
-
-    const order = new Order({
-      buyer,
-      products,
-      totalAmount,
-      deliveryCharges,
-      paymentMethod,
-      paid,
-      paymentIntentId: paymentIntentId || null,
-      status: 'pending'
-    });
-
-    await order.save({ session });
-
-    if (paid) {
-      await deductInventory(products);
-    }
-
-    const populatedOrder = await Order.findById(order._id).populate('products.productId').session(session);
-
-    // ✅ ADD THIS: Send emails after successful order creation
-    console.log('📧 Starting to send order emails...');
-    await sendOrderEmails(populatedOrder);
-    console.log('✅ Order emails sent successfully');
-
-    const uniqueSellerIds = [...new Set(products.map(p => p.sellerId))];
-    uniqueSellerIds.forEach(sellerId => {
-      io.to(`seller-${sellerId}`).emit('new-order', populatedOrder);
-    });
-
-    await session.commitTransaction();
-    
-    res.status(201).json({ 
-      message: 'Order saved successfully', 
-      order: populatedOrder 
-    });
-  } catch (err) {
-    await session.abortTransaction();
-    console.error('Order creation error:', err);
-    res.status(500).json({ message: 'Failed to save order' });
-  } finally {
-    session.endSession();
-  }
-});
-
-// Test seller email functionality with real data
-app.get('/api/debug/test-seller-emails', async (req, res) => {
-  try {
-    console.log('🧪 Testing seller email functionality with real data...');
-    
-    // Get all approved sellers from database
-    const User = await import('./models/User.js').then(module => module.default || module);
-    const approvedSellers = await User.find({ 
-      role: 'seller', 
-      isApproved: true 
-    }).select('name email businessEmail companyName');
-    
-    console.log(`🔍 Found ${approvedSellers.length} approved sellers`);
-    
-    if (approvedSellers.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'No approved sellers found in database' 
-      });
-    }
-    
-    const testResults = [];
-    
-    // Test each seller
-    for (const seller of approvedSellers) {
-      try {
-        const sellerEmail = seller.businessEmail || seller.email;
-        
-        console.log(`\n📧 Testing email for seller: ${seller.name} (${sellerEmail})`);
-        
-        const testOrder = {
-          _id: new mongoose.Types.ObjectId(),
-          buyer: {
-            name: 'Test Customer',
-            email: 'testcustomer@example.com',
-            address: '123 Test Street',
-            city: 'Test City',
-            postalCode: '12345',
-            country: 'Test Country',
-            mobile: '+1234567890'
-          },
-          products: [
-            {
-              name: 'Premium Handmade Carpet',
-              price: 299.99,
-              quantity: 1,
-              sellerId: seller._id,
-              variant: {
-                color: 'Royal Blue',
-                size: '8x10'
-              }
-            },
-            {
-              name: 'Traditional Persian Rug',
-              price: 450.00,
-              quantity: 2,
-              sellerId: seller._id,
-              variant: {
-                color: 'Burgundy',
-                size: '9x12'
-              }
-            }
-          ],
-          totalAmount: 1199.99,
-          deliveryCharges: 25,
-          paymentMethod: 'online',
-          status: 'pending',
-          createdAt: new Date(),
-          paid: true
-        };
-
-        await sendNewOrderNotificationToSeller(
-          testOrder, 
-          sellerEmail, 
-          seller.name,
-          seller.companyName
-        );
-        
-        testResults.push({
-          seller: seller.name,
-          email: sellerEmail,
-          status: '✅ SUCCESS',
-          type: seller.businessEmail ? 'Business Email' : 'Personal Email'
-        });
-        
-        console.log(`✅ Test email sent successfully to ${sellerEmail}`);
-        
-      } catch (error) {
-        testResults.push({
-          seller: seller.name,
-          email: seller.businessEmail || seller.email,
-          status: '❌ FAILED',
-          error: error.message
-        });
-        
-        console.log(`❌ Failed to send test email to ${seller.email}:`, error.message);
-      }
-    }
-    
-    res.json({ 
-      success: true, 
-      message: `Seller email test completed`,
-      results: testResults,
-      summary: {
-        total: testResults.length,
-        success: testResults.filter(r => r.status === '✅ SUCCESS').length,
-        failed: testResults.filter(r => r.status === '❌ FAILED').length
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Seller email test error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-});
-
+// Update buyer orders endpoint
 app.get('/api/orders', async (req, res) => {
   try {
     const { buyerEmail } = req.query;
@@ -1174,6 +937,7 @@ app.get('/api/orders', async (req, res) => {
 
     const orders = await Order.find({ 'buyer.email': buyerEmail })
       .populate('products.productId')
+      .populate('couponApplied.couponId') // Add this line
       .sort({ createdAt: -1 });
 
     res.json(orders);
@@ -1182,6 +946,9 @@ app.get('/api/orders', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch orders' });
   }
 });
+
+// Update seller orders endpoint
+// In your backend routes
 app.get('/api/seller/orders', async (req, res) => {
   try {
     const { sellerId } = req.query;
@@ -1190,39 +957,77 @@ app.get('/api/seller/orders', async (req, res) => {
       return res.status(400).json({ error: 'Seller ID is required' });
     }
 
-    // Check MongoDB connection first
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ 
-        error: 'Database connection unavailable',
-        message: 'Unable to fetch orders at this time. Please try again later.'
-      });
-    }
-
-    console.log('🔍 Fetching orders for seller:', sellerId);
-    
     const orders = await Order.find({ 'products.sellerId': sellerId })
       .populate('products.productId')
-      .sort({ createdAt: -1 })
-      .maxTimeMS(30000); // 30 second timeout
+      .populate('couponApplied.couponId')
+      .sort({ createdAt: -1 });
 
-    console.log(`✅ Found ${orders.length} orders for seller ${sellerId}`);
     res.json(orders);
   } catch (err) {
-    console.error('❌ Error fetching seller orders:', err.message);
-    
-    if (err.name === 'MongooseError' && err.message.includes('buffering timed out')) {
-      return res.status(503).json({ 
-        error: 'Database timeout',
-        message: 'Request took too long. Please try again.' 
-      });
-    }
-    
-    res.status(500).json({ 
-      error: 'Failed to fetch orders',
-      message: 'Please check your connection and try again.' 
-    });
+    console.error('Error fetching seller orders:', err);
+    res.status(500).json({ error: 'Failed to fetch orders' });
   }
 });
+
+// app.get('/api/orders', async (req, res) => {
+//   try {
+//     const { buyerEmail } = req.query;
+    
+//     if (!buyerEmail) {
+//       return res.status(400).json({ error: 'Buyer email is required' });
+//     }
+
+//     const orders = await Order.find({ 'buyer.email': buyerEmail })
+//       .populate('products.productId')
+//       .sort({ createdAt: -1 });
+
+//     res.json(orders);
+//   } catch (err) {
+//     console.error('Error fetching orders:', err);
+//     res.status(500).json({ error: 'Failed to fetch orders' });
+//   }
+// });
+// app.get('/api/seller/orders', async (req, res) => {
+//   try {
+//     const { sellerId } = req.query;
+    
+//     if (!sellerId) {
+//       return res.status(400).json({ error: 'Seller ID is required' });
+//     }
+
+//     // Check MongoDB connection first
+//     if (mongoose.connection.readyState !== 1) {
+//       return res.status(503).json({ 
+//         error: 'Database connection unavailable',
+//         message: 'Unable to fetch orders at this time. Please try again later.'
+//       });
+//     }
+
+//     console.log('🔍 Fetching orders for seller:', sellerId);
+    
+//     const orders = await Order.find({ 'products.sellerId': sellerId })
+//       .populate('products.productId')
+//       .sort({ createdAt: -1 })
+//       .maxTimeMS(30000); // 30 second timeout
+
+//     console.log(`✅ Found ${orders.length} orders for seller ${sellerId}`);
+//     res.json(orders);
+//   } catch (err) {
+//     console.error('❌ Error fetching seller orders:', err.message);
+    
+//     if (err.name === 'MongooseError' && err.message.includes('buffering timed out')) {
+//       return res.status(503).json({ 
+//         error: 'Database timeout',
+//         message: 'Request took too long. Please try again.' 
+//       });
+//     }
+    
+//     res.status(500).json({ 
+//       error: 'Failed to fetch orders',
+//       message: 'Please check your connection and try again.' 
+//     });
+//   }
+// });
 // app.get('/api/seller/orders', async (req, res) => {
 //   try {
 //     const { sellerId } = req.query;
@@ -1653,21 +1458,262 @@ app.get('/api/sellers/:id', async (req, res) => {
   }
 });
 
-// app.get('/api/sellers/:id', async (req, res) => {
-//   try {
-//     const seller = await User.findById(req.params.id)
-//       .select('name email companyName businessAddress');
+// Create coupon
+app.post('/api/coupons', authenticateToken, async (req, res) => {
+  try {
+    const couponData = {
+      ...req.body,
+      createdBy: req.user.id,
+      code: req.body.code.toUpperCase().trim()
+    };
+
+    const coupon = new Coupon(couponData);
+    await coupon.save();
+
+    res.status(201).json({ message: 'Coupon created successfully', coupon });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Coupon code already exists' });
+    }
+    console.error('Create coupon error:', error);
+    res.status(500).json({ message: 'Failed to create coupon' });
+  }
+});
+
+// Validate coupon
+// Validate coupon - FIXED VERSION
+app.post('/api/coupons/validate', authenticateToken, async (req, res) => {
+  try {
+    const { code, cartTotal, productIds, sellerIds } = req.body;
+    const userId = req.user.id;
+
+    console.log('🔍 Validating coupon:', { code, cartTotal, userId });
+
+    const coupon = await Coupon.findOne({ 
+      code: code.toUpperCase().trim(),
+      isActive: true
+    });
+
+    if (!coupon) {
+      console.log('❌ Coupon not found or inactive');
+      return res.status(400).json({ message: 'Invalid coupon code' });
+    }
+
+    // Check validity dates
+    const now = new Date();
+    if (now < coupon.validFrom || now > coupon.validUntil) {
+      console.log('❌ Coupon expired');
+      return res.status(400).json({ message: 'Coupon has expired' });
+    }
+
+    // Check usage limits
+    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
+      console.log('❌ Coupon usage limit reached');
+      return res.status(400).json({ message: 'Coupon usage limit reached' });
+    }
+
+    // Check per-user usage limit - FIXED VERSION
+    const userUsage = coupon.usedBy.filter(usage => 
+      usage.userId && usage.userId.toString() === userId
+    ).length;
     
-//     if (!seller || seller.role !== 'seller') {
-//       return res.status(404).json({ message: 'Seller not found' });
-//     }
+    if (userUsage >= coupon.usageLimitPerUser) {
+      console.log('❌ User has already used this coupon');
+      return res.status(400).json({ message: 'You have already used this coupon' });
+    }
+
+    // Check minimum order value
+    if (cartTotal < coupon.minOrderValue) {
+      console.log('❌ Minimum order value not met');
+      return res.status(400).json({ 
+        message: `Minimum order value of $${coupon.minOrderValue} required` 
+      });
+    }
+
+    // Check user eligibility
+    if (coupon.userEligibility === 'new_users') {
+      const userOrders = await Order.countDocuments({ 'buyer.email': req.user.email });
+      if (userOrders > 0) {
+        console.log('❌ Coupon only for new users');
+        return res.status(400).json({ message: 'Coupon only for new users' });
+      }
+    } else if (coupon.userEligibility === 'existing_users') {
+      const userOrders = await Order.countDocuments({ 'buyer.email': req.user.email });
+      if (userOrders === 0) {
+        console.log('❌ Coupon only for existing users');
+        return res.status(400).json({ message: 'Coupon only for existing users' });
+      }
+    } else if (coupon.userEligibility === 'min_orders') {
+      const userOrders = await Order.countDocuments({ 'buyer.email': req.user.email });
+      if (userOrders < coupon.minOrdersRequired) {
+        console.log('❌ Minimum orders requirement not met');
+        return res.status(400).json({ 
+          message: `Minimum ${coupon.minOrdersRequired} orders required` 
+        });
+      }
+    }
+
+    // Check product applicability
+    if (coupon.applicableTo === 'seller_products' && coupon.sellerId) {
+      const hasSellerProducts = sellerIds.some(sellerId => 
+        sellerId.toString() === coupon.sellerId.toString()
+      );
+      if (!hasSellerProducts) {
+        console.log('❌ Coupon not applicable to seller products in cart');
+        return res.status(400).json({ message: 'Coupon not applicable to products in cart' });
+      }
+    } else if (coupon.applicableTo === 'specific_products' && coupon.productIds.length > 0) {
+      const hasApplicableProducts = productIds.some(productId =>
+        coupon.productIds.some(couponProductId => 
+          couponProductId.toString() === productId.toString()
+        )
+      );
+      if (!hasApplicableProducts) {
+        console.log('❌ Coupon not applicable to specific products in cart');
+        return res.status(400).json({ message: 'Coupon not applicable to products in cart' });
+      }
+    }
+
+    console.log('✅ Coupon validated successfully');
+    res.json({ 
+      message: 'Coupon applied successfully',
+      coupon: {
+        _id: coupon._id,
+        code: coupon.code,
+        description: coupon.description,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        minOrderValue: coupon.minOrderValue
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Validate coupon error:', error);
+    res.status(500).json({ message: 'Failed to validate coupon' });
+  }
+});
+// Cleanup function for corrupted coupon data
+app.post('/api/coupons/cleanup', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const coupons = await Coupon.find({});
+    let cleanedCount = 0;
+
+    for (const coupon of coupons) {
+      let needsUpdate = false;
+      
+      // Remove null entries from usedBy array
+      const validUsedBy = coupon.usedBy.filter(usage => usage.userId !== null);
+      
+      if (validUsedBy.length !== coupon.usedBy.length) {
+        coupon.usedBy = validUsedBy;
+        coupon.usedCount = validUsedBy.length;
+        needsUpdate = true;
+        cleanedCount++;
+      }
+
+      if (needsUpdate) {
+        await coupon.save();
+      }
+    }
+
+    res.json({ 
+      message: `Cleaned up ${cleanedCount} coupons`,
+      cleanedCount 
+    });
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    res.status(500).json({ message: 'Cleanup failed' });
+  }
+});
+// Get seller coupons
+app.get('/api/seller/coupons', authenticateToken, async (req, res) => {
+  try {
+    const { sellerId } = req.query;
     
-//     res.status(200).json(seller);
-//   } catch (error) {
-//     console.error('Error fetching seller:', error);
-//     res.status(500).json({ message: 'Something went wrong' });
-//   }
-// });
+    const coupons = await Coupon.find({ 
+      $or: [
+        { sellerId: sellerId },
+        { createdBy: sellerId }
+      ]
+    }).sort({ createdAt: -1 });
+
+    res.json(coupons);
+  } catch (error) {
+    console.error('Get seller coupons error:', error);
+    res.status(500).json({ message: 'Failed to fetch coupons' });
+  }
+});
+
+// Delete coupon
+app.delete('/api/coupons/:id', authenticateToken, async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+
+    // Check if user owns the coupon
+    if (coupon.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete this coupon' });
+    }
+
+    await Coupon.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Coupon deleted successfully' });
+  } catch (error) {
+    console.error('Delete coupon error:', error);
+    res.status(500).json({ message: 'Failed to delete coupon' });
+  }
+});
+// Create new order
+app.post('/api/orders', async (req, res) => {
+  try {
+    const orderData = req.body;
+    
+    // Create the order
+    const order = new Order(orderData);
+    await order.save();
+    
+    // Populate the order for email sending
+    const populatedOrder = await Order.findById(order._id)
+      .populate('products.productId')
+      .populate('couponApplied.couponId');
+
+    console.log('📦 Order created successfully:', order._id);
+    
+    // Send emails to customer and sellers
+    try {
+      const emailResult = await sendOrderEmails(populatedOrder);
+      console.log('✅ Email sending result:', emailResult);
+    } catch (emailError) {
+      console.error('❌ Email sending failed, but order was created:', emailError);
+      // Don't fail the order creation if emails fail
+    }
+
+    // Emit socket event for real-time notifications
+    if (io) {
+      io.emit('new-order', populatedOrder);
+      
+      // Also emit to specific seller rooms
+      const uniqueSellerIds = [...new Set(populatedOrder.products.map(p => p.sellerId))];
+      uniqueSellerIds.forEach(sellerId => {
+        io.to(sellerId.toString()).emit('new-order', populatedOrder);
+      });
+    }
+
+    res.status(201).json({
+      message: 'Order created successfully',
+      order: populatedOrder
+    });
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
 
 // Admin-specific endpoints
 app.get('/api/admin/sellers', authenticateToken, async (req, res) => {

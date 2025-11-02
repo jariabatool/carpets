@@ -169,7 +169,7 @@ export default function OrdersPage() {
                     {getStatusIcon(order.status)} {order.status.toUpperCase()}
                   </div>
                   <div className="order-total-overview">
-                    {formatCurrency(order.totalAmount)}
+                    {formatCurrency(order.finalAmount || order.totalAmount)}
                   </div>
                   <div className={`expand-icon ${expandedOrder === order._id ? 'expanded' : ''}`}>
                     ▼
@@ -200,7 +200,22 @@ export default function OrdersPage() {
                             {order.paid ? 'Paid ✅' : 'Pending ⏳'}
                           </span>
                         </p>
-                        <p><strong>Order Total:</strong> {formatCurrency(order.totalAmount)}</p>
+                        
+                        {/* Coupon Information */}
+                        {order.couponApplied && (
+                          <div className="coupon-info">
+                            <p><strong>Coupon Applied:</strong> 
+                              <span className="coupon-code">{order.couponApplied.code}</span>
+                            </p>
+                            <p><strong>Discount:</strong> 
+                              <span className="discount-amount">
+                                -{formatCurrency(order.couponApplied.discountAmount)}
+                              </span>
+                            </p>
+                          </div>
+                        )}
+                        
+                        <p><strong>Order Total:</strong> {formatCurrency(order.finalAmount || order.totalAmount)}</p>
                       </div>
                     </div>
                   </div>
@@ -243,9 +258,18 @@ export default function OrdersPage() {
                       <span>Delivery Fee:</span>
                       <span>{formatCurrency(order.deliveryCharges)}</span>
                     </div>
+                    
+                    {/* Discount Row */}
+                    {order.couponApplied && (
+                      <div className="summary-row discount-row">
+                        <span>Discount ({order.couponApplied.code}):</span>
+                        <span>-{formatCurrency(order.couponApplied.discountAmount)}</span>
+                      </div>
+                    )}
+                    
                     <div className="summary-row total">
                       <span>Grand Total:</span>
-                      <span>{formatCurrency(order.totalAmount)}</span>
+                      <span>{formatCurrency(order.finalAmount || order.totalAmount)}</span>
                     </div>
                   </div>
                 </div>

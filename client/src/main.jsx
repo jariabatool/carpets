@@ -29,6 +29,7 @@ import BuyerDetailPage from './pages/BuyerDetailPage.jsx';
 import AdminProductDetailPage from './pages/AdminProductDetailPage.jsx';
 import MyProductsPage from './pages/MyProductsPage.jsx';
 import ForgotPassword from './pages/ForgotPassword';
+import SellerCouponsPage from './pages/SellerCouponsPage';
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -54,6 +55,7 @@ createRoot(document.getElementById("root")).render(
                   <Route path="/sellers" element={<SellersPage />} />
                   {/* <Route path="/seller/:sellerId/products" element={<SellerProductsPage />} /> */}
                   <Route path="checkout" element={<CheckoutPage />} />
+                  <Route path="/seller/coupons" element={<SellerCouponsPage />} />
                   <Route path="manage-products" element={<ProductManagementPage />} />
                   <Route path="my-products" element={<MyProductsPage />} />
                   <Route path="add-product" element={<AddProductPage />} />

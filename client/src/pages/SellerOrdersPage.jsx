@@ -14,7 +14,6 @@ export default function SellerOrdersPage() {
     status: "all",
     sortBy: "newest",
   });
-  const [expandedOrder, setExpandedOrder] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -25,16 +24,22 @@ export default function SellerOrdersPage() {
       socket.emit('join-seller-room', user._id);
       
       socket.on('new-order', (newOrder) => {
-        setNotifications(prev => [{
-          id: Date.now(),
-          type: 'new_order',
-          order: newOrder,
-          read: false,
-          timestamp: new Date()
-        }, ...prev]);
+        // Check if this order has products for this specific seller
+        const sellerProducts = newOrder.products.filter(p => p.sellerId === user._id);
         
-        if (newOrder.products.some(p => p.sellerId === user._id)) {
-          setOrders(prev => [newOrder, ...prev]);
+        if (sellerProducts.length > 0) {
+          // Create a seller-specific version of the order
+          const sellerOrder = createSellerSpecificOrder(newOrder, user._id);
+          
+          setNotifications(prev => [{
+            id: Date.now(),
+            type: 'new_order',
+            order: sellerOrder,
+            read: false,
+            timestamp: new Date()
+          }, ...prev]);
+          
+          setOrders(prev => [sellerOrder, ...prev]);
         }
       });
     }
@@ -45,6 +50,29 @@ export default function SellerOrdersPage() {
       }
     };
   }, [socket, user]);
+
+  const createSellerSpecificOrder = (order, sellerId) => {
+    const sellerProducts = order.products.filter(p => p.sellerId === sellerId);
+    const sellerSubtotal = sellerProducts.reduce((sum, product) => sum + (product.price * product.quantity), 0);
+    
+    // For multi-seller orders, calculate proportional delivery charges and discount
+    const totalOrderAmount = order.products.reduce((sum, product) => sum + (product.price * product.quantity), 0);
+    const sellerProportion = sellerSubtotal / totalOrderAmount;
+    
+    const sellerDeliveryCharges = order.deliveryCharges ? Math.round(order.deliveryCharges * sellerProportion) : 0;
+    const sellerDiscount = order.couponApplied ? Math.round(order.couponApplied.discountAmount * sellerProportion) : 0;
+    
+    return {
+      ...order,
+      products: sellerProducts,
+      sellerSubtotal: sellerSubtotal,
+      sellerDeliveryCharges: sellerDeliveryCharges,
+      sellerDiscount: sellerDiscount,
+      sellerTotal: sellerSubtotal + sellerDeliveryCharges - sellerDiscount,
+      isMultiSeller: order.products.length > sellerProducts.length,
+      originalOrderTotal: order.finalAmount || order.totalAmount
+    };
+  };
 
   const fetchSellerOrders = async () => {
     try {
@@ -59,11 +87,13 @@ export default function SellerOrdersPage() {
       }
       
       const data = await response.json();
-      setOrders(data);
+      
+      // Process orders to show only seller-specific data
+      const sellerOrders = data.map(order => createSellerSpecificOrder(order, user._id));
+      setOrders(sellerOrders);
     } catch (err) {
       console.error("Error fetching seller orders:", err);
       
-      // Show user-friendly error messages
       if (err.message.includes('Database') || err.message.includes('timeout')) {
         setError('Database is temporarily unavailable. Please try again in a moment.');
       } else if (err.message.includes('Failed to fetch')) {
@@ -72,29 +102,11 @@ export default function SellerOrdersPage() {
         setError(err.message);
       }
       
-      setOrders([]); // Clear orders on error
+      setOrders([]);
     } finally {
       setLoading(false);
     }
   };
-  // const fetchSellerOrders = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const response = await fetch(`http://localhost:5000/api/seller/orders?sellerId=${user._id}`);
-      
-  //     if (!response.ok) {
-  //       throw new Error(`HTTP error! status: ${response.status}`);
-  //     }
-      
-  //     const data = await response.json();
-  //     setOrders(data);
-  //   } catch (err) {
-  //     console.error("Error fetching seller orders:", err);
-  //     setError(err.message);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -103,7 +115,10 @@ export default function SellerOrdersPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ 
+          status: newStatus,
+          sellerId: user._id
+        }),
       });
 
       if (!response.ok) {
@@ -111,16 +126,16 @@ export default function SellerOrdersPage() {
       }
 
       const updatedOrder = await response.json();
+      const sellerSpecificOrder = createSellerSpecificOrder(updatedOrder, user._id);
       
       setOrders(prev => prev.map(order => 
-        order._id === orderId ? updatedOrder : order
+        order._id === orderId ? sellerSpecificOrder : order
       ));
       
       setNotifications(prev => prev.map(notif => 
         notif.order?._id === orderId ? { ...notif, read: true } : notif
       ));
 
-      // Show success message with email notification
       const statusMessages = {
         processing: 'Order is now being processed 📦',
         shipped: 'Order marked as shipped! Customer notified 🚚',
@@ -135,35 +150,6 @@ export default function SellerOrdersPage() {
       alert('Failed to update order status');
     }
   };
-  // const updateOrderStatus = async (orderId, newStatus) => {
-  //   try {
-  //     const response = await fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
-  //       method: 'PUT',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({ status: newStatus }),
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error('Failed to update status');
-  //     }
-
-  //     const updatedOrder = await response.json();
-      
-  //     setOrders(prev => prev.map(order => 
-  //       order._id === orderId ? updatedOrder : order
-  //     ));
-      
-  //     setNotifications(prev => prev.map(notif => 
-  //       notif.order?._id === orderId ? { ...notif, read: true } : notif
-  //     ));
-
-  //   } catch (err) {
-  //     console.error('Error updating order status:', err);
-  //     alert('Failed to update order status');
-  //   }
-  // };
 
   const markNotificationAsRead = (notificationId) => {
     setNotifications(prev => prev.map(notif => 
@@ -228,7 +214,7 @@ export default function SellerOrdersPage() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   const unreadNotifications = notifications.filter(notif => !notif.read);
@@ -251,7 +237,7 @@ export default function SellerOrdersPage() {
             <div className="stat-icon">📦</div>
             <div className="stat-info">
               <h3>{orders.length}</h3>
-              <p>Total Orders</p>
+              <p>Your Orders</p>
             </div>
           </div>
           
@@ -309,8 +295,11 @@ export default function SellerOrdersPage() {
                   >
                     <div className="notification-icon">📦</div>
                     <div className="notification-content">
-                      <p><strong>New Order #{notification.order._id.slice(-8).toUpperCase()}</strong></p>
-                      <p>{formatCurrency(notification.order.totalAmount)} • {formatDate(notification.timestamp)}</p>
+                      <p><strong>New Order #{notification.order._id?.slice(-8).toUpperCase()}</strong></p>
+                      <p>{formatCurrency(notification.order.sellerTotal)} • {formatDate(notification.timestamp)}</p>
+                      {notification.order.isMultiSeller && (
+                        <p className="multi-seller-badge">Multi-Seller Order</p>
+                      )}
                     </div>
                     {!notification.read && <div className="unread-dot"></div>}
                   </div>
@@ -376,7 +365,23 @@ export default function SellerOrdersPage() {
                     <h3>Order #{order._id.slice(-8).toUpperCase()}</h3>
                     <p className="order-date">{formatDate(order.createdAt)}</p>
                     <p className="buyer-info">Buyer: {order.buyer.name}</p>
-                    <p className="order-total">Total: {formatCurrency(order.totalAmount)}</p>
+                    <p className="order-total">
+                      Your Total: {formatCurrency(order.sellerTotal)}
+                    </p>
+                    <p className="items-count">Your Items: {order.products.length} product(s)</p>
+                    
+                    {/* Show if this is a multi-seller order */}
+                    {order.isMultiSeller && (
+                      <p className="multi-seller-notice">
+                        ⚡ Multi-Seller Order
+                      </p>
+                    )}
+                    
+                    {order.couponApplied && (
+                      <p className="coupon-badge">
+                        🎫 Coupon: {order.couponApplied.code}
+                      </p>
+                    )}
                   </div>
                 </div>
                 
@@ -413,11 +418,19 @@ export default function SellerOrdersPage() {
         <div className="modal-overlay" onClick={closeOrderDetails}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Order Details</h2>
+              <h2>Order Details - Your Products</h2>
               <button className="close-modal" onClick={closeOrderDetails}>×</button>
             </div>
             
             <div className="order-details-modal">
+              {/* Multi-seller notice */}
+              {selectedOrder.isMultiSeller && (
+                <div className="multi-seller-alert">
+                  <strong>⚠️ Multi-Seller Order:</strong> This order contains products from multiple sellers. 
+                  You are only responsible for the products listed below.
+                </div>
+              )}
+
               <div className="order-summary">
                 <div className="summary-row">
                   <span>Order ID:</span>
@@ -433,6 +446,14 @@ export default function SellerOrdersPage() {
                     {getStatusIcon(selectedOrder.status)} {selectedOrder.status.toUpperCase()}
                   </span>
                 </div>
+                
+                {selectedOrder.couponApplied && (
+                  <div className="summary-row">
+                    <span>Coupon Applied:</span>
+                    <span className="coupon-code">{selectedOrder.couponApplied.code}</span>
+                  </div>
+                )}
+                
                 <div className="summary-row">
                   <span>Payment Method:</span>
                   <span>{selectedOrder.paymentMethod}</span>
@@ -462,7 +483,7 @@ export default function SellerOrdersPage() {
               </div>
 
               <div className="products-section">
-                <h3>🛍️ Ordered Products ({selectedOrder.products.length})</h3>
+                <h3>🛍️ Your Products ({selectedOrder.products.length})</h3>
                 <div className="products-list">
                   {selectedOrder.products.map((product, index) => (
                     <div key={index} className="product-item-modal">
@@ -492,17 +513,34 @@ export default function SellerOrdersPage() {
 
               <div className="order-total-modal">
                 <div className="total-row">
-                  <span>Items Total:</span>
-                  <span>{formatCurrency(selectedOrder.totalAmount - selectedOrder.deliveryCharges)}</span>
+                  <span>Your Items Total:</span>
+                  <span>{formatCurrency(selectedOrder.sellerSubtotal)}</span>
                 </div>
+                
                 <div className="total-row">
-                  <span>Delivery Fee:</span>
-                  <span>{formatCurrency(selectedOrder.deliveryCharges)}</span>
+                  <span>Your Delivery Fee:</span>
+                  <span>{formatCurrency(selectedOrder.sellerDeliveryCharges)}</span>
                 </div>
+                
+                {selectedOrder.couponApplied && (
+                  <div className="total-row discount-row">
+                    <span>Your Discount ({selectedOrder.couponApplied.code}):</span>
+                    <span>-{formatCurrency(selectedOrder.sellerDiscount)}</span>
+                  </div>
+                )}
+                
                 <div className="total-row grand-total">
-                  <span>Grand Total:</span>
-                  <span>{formatCurrency(selectedOrder.totalAmount)}</span>
+                  <span>Your Total Amount:</span>
+                  <span>{formatCurrency(selectedOrder.sellerTotal)}</span>
                 </div>
+
+                {selectedOrder.isMultiSeller && (
+                  <div className="total-row info-note">
+                    <small>
+                      * This is your portion of the complete order totaling {formatCurrency(selectedOrder.originalOrderTotal)}
+                    </small>
+                  </div>
+                )}
               </div>
 
               <div className="modal-actions">

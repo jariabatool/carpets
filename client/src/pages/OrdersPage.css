@@ -425,3 +425,32 @@ body.dark .order-summary {
     height: 120px;
   }
 }
+/* Coupon styles */
+.coupon-info {
+  background: #f0f9ff;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 3px solid #3b82f6;
+  margin: 10px 0;
+}
+
+.coupon-code {
+  color: #1d4ed8;
+  font-weight: bold;
+  margin-left: 5px;
+}
+
+.discount-amount {
+  color: #ef4444;
+  font-weight: bold;
+  margin-left: 5px;
+}
+
+.discount-row {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.discount-row span:last-child {
+  color: #ef4444;
+}
