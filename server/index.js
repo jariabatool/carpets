@@ -11,8 +11,13 @@ import Subcategory from './models/Subcategory.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import Review from "./models/Review.js";
-import { sendOrderEmails } from './utils/mailjet.js';
-
+import crypto from 'crypto';
+import { sendOrderEmails, 
+  sendOrderStatusUpdateEmail, 
+  sendSellerApprovalEmail, 
+  sendSellerRejectionEmail,  
+  sendPasswordResetEmail,
+  sendPasswordResetConfirmationEmail } from './utils/mailjet.js';
 dotenv.config();
 
 const app = express();
@@ -254,6 +259,185 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Password reset storage (in production, use Redis or database)
+const passwordResetCodes = new Map();
+
+// Generate random 6-digit code
+const generateResetCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Forgot password endpoint
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return res.json({ 
+        message: 'If an account with that email exists, a reset code has been sent.' 
+      });
+    }
+
+    // Generate reset code
+    const resetCode = generateResetCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Store reset code (in production, store in database)
+    passwordResetCodes.set(email, {
+      code: resetCode,
+      expiresAt: expiresAt,
+      userId: user._id
+    });
+
+    console.log(`Password reset code for ${email}: ${resetCode}`);
+
+    // Send reset code via email
+    try {
+      await sendPasswordResetEmail(email, user.name, resetCode);
+      console.log('Password reset email sent to:', email);
+    } catch (emailError) {
+      console.error('Failed to send reset email:', emailError);
+      // Continue anyway for demo purposes
+    }
+
+    res.json({ 
+      message: 'If an account with that email exists, a reset code has been sent.',
+      // In development, you might want to return the code
+      code: process.env.NODE_ENV === 'development' ? resetCode : undefined
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Reset password endpoint
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    // Get stored reset code
+    const resetData = passwordResetCodes.get(email);
+    
+    if (!resetData) {
+      return res.status(400).json({ message: 'Invalid or expired reset code' });
+    }
+
+    // Check if code matches and is not expired
+    if (resetData.code !== code) {
+      return res.status(400).json({ message: 'Invalid reset code' });
+    }
+
+    if (new Date() > resetData.expiresAt) {
+      passwordResetCodes.delete(email);
+      return res.status(400).json({ message: 'Reset code has expired' });
+    }
+
+    // Find user
+    const user = await User.findById(resetData.userId);
+    
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update user password
+    user.password = hashedPassword;
+    await user.save();
+
+    // Remove used reset code
+    passwordResetCodes.delete(email);
+
+    // Send confirmation email
+    try {
+      await sendPasswordResetConfirmationEmail(email, user.name);
+    } catch (emailError) {
+      console.error('Failed to send confirmation email:', emailError);
+    }
+
+    res.json({ message: 'Password reset successfully' });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Clean up expired reset codes periodically
+setInterval(() => {
+  const now = new Date();
+  for (const [email, data] of passwordResetCodes.entries()) {
+    if (now > data.expiresAt) {
+      passwordResetCodes.delete(email);
+    }
+  }
+}, 60 * 1000); // Run every minute
+// Change password endpoint (requires authentication)
+app.post('/api/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+    }
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    user.password = hashedPassword;
+    await user.save();
+
+    // Send confirmation email
+    try {
+      await sendPasswordChangeConfirmationEmail(user.email, user.name);
+    } catch (emailError) {
+      console.error('Failed to send password change confirmation:', emailError);
+    }
+
+    res.json({ message: 'Password changed successfully' });
+
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
 // Add this temporary endpoint to reset admin password (remove after use)
 app.post('/api/reset-admin-password', async (req, res) => {
   try {
@@ -320,7 +504,28 @@ app.patch('/api/approve-user/:id', authenticateToken, async (req, res) => {
   
   try {
     const { id } = req.params;
-    await User.findByIdAndUpdate(id, { isApproved: true });
+    const user = await User.findByIdAndUpdate(
+      id, 
+      { isApproved: true },
+      { new: true }
+    );
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // ✅ SEND APPROVAL EMAIL IF USER IS A SELLER
+    if (user.role === 'seller') {
+      console.log('📧 Sending seller approval email to:', user.email);
+      try {
+        await sendSellerApprovalEmail(user.email, user.name, user.companyName);
+        console.log('✅ Seller approval email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send approval email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
+
     res.status(200).json({ message: 'User approved successfully' });
   } catch (error) {
     console.error('Approve user error:', error);
@@ -335,6 +540,24 @@ app.delete('/api/reject-user/:id', authenticateToken, async (req, res) => {
   
   try {
     const { id } = req.params;
+    const user = await User.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // ✅ SEND REJECTION EMAIL IF USER IS A SELLER
+    if (user.role === 'seller') {
+      console.log('📧 Sending seller rejection email to:', user.email);
+      try {
+        await sendSellerRejectionEmail(user.email, user.name, user.companyName);
+        console.log('✅ Seller rejection email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send rejection email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
+
     await User.findByIdAndDelete(id);
     res.status(200).json({ message: 'User rejected successfully' });
   } catch (error) {
@@ -342,6 +565,35 @@ app.delete('/api/reject-user/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Something went wrong' });
   }
 });
+// app.patch('/api/approve-user/:id', authenticateToken, async (req, res) => {
+//   if (req.user.role !== 'admin') {
+//     return res.status(403).json({ message: 'Admin access required' });
+//   }
+  
+//   try {
+//     const { id } = req.params;
+//     await User.findByIdAndUpdate(id, { isApproved: true });
+//     res.status(200).json({ message: 'User approved successfully' });
+//   } catch (error) {
+//     console.error('Approve user error:', error);
+//     res.status(500).json({ message: 'Something went wrong' });
+//   }
+// });
+
+// app.delete('/api/reject-user/:id', authenticateToken, async (req, res) => {
+//   if (req.user.role !== 'admin') {
+//     return res.status(403).json({ message: 'Admin access required' });
+//   }
+  
+//   try {
+//     const { id } = req.params;
+//     await User.findByIdAndDelete(id);
+//     res.status(200).json({ message: 'User rejected successfully' });
+//   } catch (error) {
+//     console.error('Reject user error:', error);
+//     res.status(500).json({ message: 'Something went wrong' });
+//   }
+// });
 
 // Helper function to deduct inventory
 async function deductInventory(products) {
@@ -413,7 +665,71 @@ async function restoreInventory(products) {
     session.endSession();
   }
 }
+// Update user profile endpoint
+app.put('/api/profile/update', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updateData = req.body;
 
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Fields that can be updated
+    const allowedFields = [
+      'name', 'email', 'companyName', 'businessEmail', 
+      'businessPhone', 'taxId', 'businessAddress'
+    ];
+
+    // Filter update data to only include allowed fields
+    const filteredUpdate = {};
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        filteredUpdate[field] = updateData[field];
+      }
+    });
+
+    // Check if email is being changed and if it's already taken
+    if (filteredUpdate.email && filteredUpdate.email !== user.email) {
+      const existingUser = await User.findOne({ 
+        email: filteredUpdate.email.toLowerCase(),
+        _id: { $ne: userId }
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({ message: 'Email already exists' });
+      }
+    }
+
+    // Update user
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: filteredUpdate },
+      { new: true, runValidators: true }
+    ).select('-password'); // Don't return password
+
+    res.json({ 
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
+
+  } catch (error) {
+    console.error('Profile update error:', error);
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: errors.join(', ') });
+    }
+    
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+    
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
 // Product endpoints
 app.get('/api/products/preview', async (req, res) => {
   try {
@@ -729,6 +1045,125 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
+// Test seller email functionality with real data
+app.get('/api/debug/test-seller-emails', async (req, res) => {
+  try {
+    console.log('🧪 Testing seller email functionality with real data...');
+    
+    // Get all approved sellers from database
+    const User = await import('./models/User.js').then(module => module.default || module);
+    const approvedSellers = await User.find({ 
+      role: 'seller', 
+      isApproved: true 
+    }).select('name email businessEmail companyName');
+    
+    console.log(`🔍 Found ${approvedSellers.length} approved sellers`);
+    
+    if (approvedSellers.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No approved sellers found in database' 
+      });
+    }
+    
+    const testResults = [];
+    
+    // Test each seller
+    for (const seller of approvedSellers) {
+      try {
+        const sellerEmail = seller.businessEmail || seller.email;
+        
+        console.log(`\n📧 Testing email for seller: ${seller.name} (${sellerEmail})`);
+        
+        const testOrder = {
+          _id: new mongoose.Types.ObjectId(),
+          buyer: {
+            name: 'Test Customer',
+            email: 'testcustomer@example.com',
+            address: '123 Test Street',
+            city: 'Test City',
+            postalCode: '12345',
+            country: 'Test Country',
+            mobile: '+1234567890'
+          },
+          products: [
+            {
+              name: 'Premium Handmade Carpet',
+              price: 299.99,
+              quantity: 1,
+              sellerId: seller._id,
+              variant: {
+                color: 'Royal Blue',
+                size: '8x10'
+              }
+            },
+            {
+              name: 'Traditional Persian Rug',
+              price: 450.00,
+              quantity: 2,
+              sellerId: seller._id,
+              variant: {
+                color: 'Burgundy',
+                size: '9x12'
+              }
+            }
+          ],
+          totalAmount: 1199.99,
+          deliveryCharges: 25,
+          paymentMethod: 'online',
+          status: 'pending',
+          createdAt: new Date(),
+          paid: true
+        };
+
+        await sendNewOrderNotificationToSeller(
+          testOrder, 
+          sellerEmail, 
+          seller.name,
+          seller.companyName
+        );
+        
+        testResults.push({
+          seller: seller.name,
+          email: sellerEmail,
+          status: '✅ SUCCESS',
+          type: seller.businessEmail ? 'Business Email' : 'Personal Email'
+        });
+        
+        console.log(`✅ Test email sent successfully to ${sellerEmail}`);
+        
+      } catch (error) {
+        testResults.push({
+          seller: seller.name,
+          email: seller.businessEmail || seller.email,
+          status: '❌ FAILED',
+          error: error.message
+        });
+        
+        console.log(`❌ Failed to send test email to ${seller.email}:`, error.message);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Seller email test completed`,
+      results: testResults,
+      summary: {
+        total: testResults.length,
+        success: testResults.filter(r => r.status === '✅ SUCCESS').length,
+        failed: testResults.filter(r => r.status === '❌ FAILED').length
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Seller email test error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 app.get('/api/orders', async (req, res) => {
   try {
     const { buyerEmail } = req.query;
@@ -747,7 +1182,6 @@ app.get('/api/orders', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch orders' });
   }
 });
-
 app.get('/api/seller/orders', async (req, res) => {
   try {
     const { sellerId } = req.query;
@@ -756,17 +1190,58 @@ app.get('/api/seller/orders', async (req, res) => {
       return res.status(400).json({ error: 'Seller ID is required' });
     }
 
+    // Check MongoDB connection first
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        error: 'Database connection unavailable',
+        message: 'Unable to fetch orders at this time. Please try again later.'
+      });
+    }
+
+    console.log('🔍 Fetching orders for seller:', sellerId);
+    
     const orders = await Order.find({ 'products.sellerId': sellerId })
       .populate('products.productId')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .maxTimeMS(30000); // 30 second timeout
 
+    console.log(`✅ Found ${orders.length} orders for seller ${sellerId}`);
     res.json(orders);
   } catch (err) {
-    console.error('Error fetching seller orders:', err);
-    res.status(500).json({ error: 'Failed to fetch orders' });
+    console.error('❌ Error fetching seller orders:', err.message);
+    
+    if (err.name === 'MongooseError' && err.message.includes('buffering timed out')) {
+      return res.status(503).json({ 
+        error: 'Database timeout',
+        message: 'Request took too long. Please try again.' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to fetch orders',
+      message: 'Please check your connection and try again.' 
+    });
   }
 });
+// app.get('/api/seller/orders', async (req, res) => {
+//   try {
+//     const { sellerId } = req.query;
+    
+//     if (!sellerId) {
+//       return res.status(400).json({ error: 'Seller ID is required' });
+//     }
 
+//     const orders = await Order.find({ 'products.sellerId': sellerId })
+//       .populate('products.productId')
+//       .sort({ createdAt: -1 });
+
+//     res.json(orders);
+//   } catch (err) {
+//     console.error('Error fetching seller orders:', err);
+//     res.status(500).json({ error: 'Failed to fetch orders' });
+//   }
+// });
+// Updated order status endpoint with email notifications
 app.put('/api/orders/:id/status', async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -794,6 +1269,13 @@ app.put('/api/orders/:id/status', async (req, res) => {
 
     const previousStatus = currentOrder.status;
 
+    // Don't send email if status hasn't changed
+    if (previousStatus === status) {
+      await session.abortTransaction();
+      return res.json(currentOrder);
+    }
+
+    // Handle inventory changes
     if (previousStatus !== status) {
       if (status === 'cancelled') {
         if (currentOrder.paid || previousStatus !== 'pending') {
@@ -814,6 +1296,24 @@ app.put('/api/orders/:id/status', async (req, res) => {
       { new: true, runValidators: true, session }
     ).populate('products.productId');
 
+    // ✅ SEND STATUS UPDATE EMAIL TO BUYER
+    console.log('📧 Sending status update email for order:', id);
+    console.log('📧 Status change:', previousStatus, '→', status);
+    
+    try {
+      await sendOrderStatusUpdateEmail(
+        updatedOrder,
+        updatedOrder.buyer.email,
+        updatedOrder.buyer.name,
+        previousStatus,
+        status
+      );
+      console.log('✅ Status update email sent successfully to buyer');
+    } catch (emailError) {
+      console.error('❌ Failed to send status update email:', emailError);
+      // Don't fail the entire request if email fails
+    }
+
     await session.commitTransaction();
     res.json(updatedOrder);
   } catch (err) {
@@ -824,6 +1324,179 @@ app.put('/api/orders/:id/status', async (req, res) => {
     session.endSession();
   }
 });
+// Test endpoint for status update emails
+app.post('/api/debug/test-status-email', async (req, res) => {
+  try {
+    console.log('🧪 Testing status update email functionality...');
+    
+    // Get a real order from database for testing
+    const realOrder = await Order.findOne().populate('products.productId');
+    
+    if (!realOrder) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No orders found in database' 
+      });
+    }
+
+    const testStatuses = ['processing', 'shipped', 'delivered'];
+    
+    const testResults = [];
+    
+    for (const newStatus of testStatuses) {
+      try {
+        console.log(`📧 Testing status update to: ${newStatus}`);
+        
+        await sendOrderStatusUpdateEmail(
+          realOrder,
+          realOrder.buyer.email,
+          realOrder.buyer.name,
+          realOrder.status,
+          newStatus
+        );
+        
+        testResults.push({
+          from: realOrder.status,
+          to: newStatus,
+          status: '✅ SUCCESS',
+          buyer: realOrder.buyer.email
+        });
+        
+        console.log(`✅ Status update email sent for ${newStatus}`);
+        
+      } catch (error) {
+        testResults.push({
+          from: realOrder.status,
+          to: newStatus,
+          status: '❌ FAILED',
+          error: error.message
+        });
+        
+        console.log(`❌ Failed to send status email for ${newStatus}:`, error.message);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Status email test completed',
+      results: testResults,
+      order: {
+        id: realOrder._id,
+        buyer: realOrder.buyer.email,
+        currentStatus: realOrder.status
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Status email test error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+// Test endpoint for seller approval emails
+app.post('/api/debug/test-seller-approval-email', async (req, res) => {
+  try {
+    console.log('🧪 Testing seller approval email...');
+    
+    const testEmail = req.body.email || 'test-seller@example.com'; // Change to real email for testing
+    
+    await sendSellerApprovalEmail(testEmail, 'Test Seller', 'Test Company');
+    
+    res.json({ 
+      success: true, 
+      message: 'Seller approval email sent successfully',
+      recipient: testEmail
+    });
+  } catch (error) {
+    console.error('❌ Seller approval email test failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Test endpoint for seller rejection emails
+app.post('/api/debug/test-seller-rejection-email', async (req, res) => {
+  try {
+    console.log('🧪 Testing seller rejection email...');
+    
+    const testEmail = req.body.email || 'test-seller@example.com'; // Change to real email for testing
+    
+    await sendSellerRejectionEmail(testEmail, 'Test Seller', 'Test Company');
+    
+    res.json({ 
+      success: true, 
+      message: 'Seller rejection email sent successfully',
+      recipient: testEmail
+    });
+  } catch (error) {
+    console.error('❌ Seller rejection email test failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+// app.put('/api/orders/:id/status', async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const { id } = req.params;
+//     const { status } = req.body;
+
+//     if (!mongoose.Types.ObjectId.isValid(id)) {
+//       await session.abortTransaction();
+//       return res.status(400).json({ error: 'Invalid order ID' });
+//     }
+
+//     const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+//     if (!validStatuses.includes(status)) {
+//       await session.abortTransaction();
+//       return res.status(400).json({ error: 'Invalid status' });
+//     }
+
+//     const currentOrder = await Order.findById(id).session(session).populate('products.productId');
+//     if (!currentOrder) {
+//       await session.abortTransaction();
+//       return res.status(404).json({ error: 'Order not found' });
+//     }
+
+//     const previousStatus = currentOrder.status;
+
+//     if (previousStatus !== status) {
+//       if (status === 'cancelled') {
+//         if (currentOrder.paid || previousStatus !== 'pending') {
+//           await restoreInventory(currentOrder.products);
+//         }
+//       } else if (previousStatus === 'cancelled' && status !== 'cancelled') {
+//         await deductInventory(currentOrder.products);
+//       } else if (previousStatus === 'pending' && status !== 'pending' && status !== 'cancelled') {
+//         await deductInventory(currentOrder.products);
+//       } else if (previousStatus !== 'pending' && previousStatus !== 'cancelled' && status === 'pending') {
+//         await restoreInventory(currentOrder.products);
+//       }
+//     }
+
+//     const updatedOrder = await Order.findByIdAndUpdate(
+//       id,
+//       { status },
+//       { new: true, runValidators: true, session }
+//     ).populate('products.productId');
+
+//     await session.commitTransaction();
+//     res.json(updatedOrder);
+//   } catch (err) {
+//     await session.abortTransaction();
+//     console.error('Error updating order status:', err);
+//     res.status(500).json({ error: 'Failed to update order status' });
+//   } finally {
+//     session.endSession();
+//   }
+// });
 // GET: Seller's own products (for logged-in seller)
 app.get('/api/my-products', authenticateToken, async (req, res) => {
   try {

@@ -17,6 +17,7 @@ import ProductManagementPage from "./pages/ProductManagementPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import Layout from "./components/Layout";
 import "./index.css";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import AddProductPage from './pages/AddProductPage';
 import EditProductPage from './pages/EditProductPage.jsx';
 import OrdersPage from './pages/OrdersPage';
@@ -27,6 +28,7 @@ import SellerDetailPage from './pages/SellerDetailPage.jsx';
 import BuyerDetailPage from './pages/BuyerDetailPage.jsx';
 import AdminProductDetailPage from './pages/AdminProductDetailPage.jsx';
 import MyProductsPage from './pages/MyProductsPage.jsx';
+import ForgotPassword from './pages/ForgotPassword';
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -39,9 +41,11 @@ createRoot(document.getElementById("root")).render(
                 {/* Auth routes OUTSIDE layout */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
                 {/* All other routes inside layout */}
                 <Route path="/" element={<Layout />}>
                   <Route index element={<App />} />
+                  <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/admin/product/:id" element={<AdminProductDetailPage />} />
                   <Route path="category/:type/:subcategory" element={<CategoryPage />} />

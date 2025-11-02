@@ -652,3 +652,54 @@
     font-size: 0.9rem;
   }
 }
+/* Add these styles to your existing LoginPage.css */
+
+.success-message {
+  background: #d1fae5;
+  border: 1px solid #10b981;
+  color: #065f46;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.success-icon {
+  font-size: 16px;
+}
+
+.password-input-container {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 5px;
+}
+
+/* Demo reset code display */
+.reset-code-display {
+  background: #f3f4f6;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  text-align: center;
+  border: 1px dashed #6b7280;
+}
+
+.reset-code-display code {
+  font-family: monospace;
+  font-size: 24px;
+  font-weight: bold;
+  color: #ef4444;
+  letter-spacing: 3px;
+}

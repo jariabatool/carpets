@@ -49,21 +49,52 @@ export default function SellerOrdersPage() {
   const fetchSellerOrders = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const response = await fetch(`http://localhost:5000/api/seller/orders?sellerId=${user._id}`);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
       setOrders(data);
     } catch (err) {
       console.error("Error fetching seller orders:", err);
-      setError(err.message);
+      
+      // Show user-friendly error messages
+      if (err.message.includes('Database') || err.message.includes('timeout')) {
+        setError('Database is temporarily unavailable. Please try again in a moment.');
+      } else if (err.message.includes('Failed to fetch')) {
+        setError('Unable to connect to server. Please check your internet connection.');
+      } else {
+        setError(err.message);
+      }
+      
+      setOrders([]); // Clear orders on error
     } finally {
       setLoading(false);
     }
   };
+  // const fetchSellerOrders = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await fetch(`http://localhost:5000/api/seller/orders?sellerId=${user._id}`);
+      
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP error! status: ${response.status}`);
+  //     }
+      
+  //     const data = await response.json();
+  //     setOrders(data);
+  //   } catch (err) {
+  //     console.error("Error fetching seller orders:", err);
+  //     setError(err.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -89,11 +120,50 @@ export default function SellerOrdersPage() {
         notif.order?._id === orderId ? { ...notif, read: true } : notif
       ));
 
+      // Show success message with email notification
+      const statusMessages = {
+        processing: 'Order is now being processed 📦',
+        shipped: 'Order marked as shipped! Customer notified 🚚',
+        delivered: 'Order delivered! Customer notified ✅',
+        cancelled: 'Order cancelled ❌'
+      };
+
+      alert(`Status updated to ${newStatus}! ${statusMessages[newStatus] || 'Customer has been notified.'}`);
+
     } catch (err) {
       console.error('Error updating order status:', err);
       alert('Failed to update order status');
     }
   };
+  // const updateOrderStatus = async (orderId, newStatus) => {
+  //   try {
+  //     const response = await fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ status: newStatus }),
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error('Failed to update status');
+  //     }
+
+  //     const updatedOrder = await response.json();
+      
+  //     setOrders(prev => prev.map(order => 
+  //       order._id === orderId ? updatedOrder : order
+  //     ));
+      
+  //     setNotifications(prev => prev.map(notif => 
+  //       notif.order?._id === orderId ? { ...notif, read: true } : notif
+  //     ));
+
+  //   } catch (err) {
+  //     console.error('Error updating order status:', err);
+  //     alert('Failed to update order status');
+  //   }
+  // };
 
   const markNotificationAsRead = (notificationId) => {
     setNotifications(prev => prev.map(notif => 

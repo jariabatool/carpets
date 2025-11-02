@@ -1,54 +1,249 @@
-/* ProfileIcon.css */
 .profile-icon-wrapper {
   position: relative;
   display: inline-block;
-  margin-left: 1rem;
 }
 
-.profile-icon {
-  cursor: pointer;
-  font-size: 1.5rem;
-  padding: 6px;
-  border-radius: 50%;
-  background: #eee;
-  transition: background 0.3s;
-}
-
-.profile-icon:hover {
-  background: #ddd;
-}
-
-.profile-dropdown {
-  position: absolute;
-  right: 0;
-  top: 2.5rem;
-  background: white;
-  border: 1px solid #ccc;
-  padding: 1rem;
-  z-index: 1000;
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
   border-radius: 8px;
-  width: 200px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-.profile-dropdown p {
-  margin: 0.3rem 0;
-}
-.profile-dropdown button {
-  margin-top: 0.5rem;
-  padding: 5px 10px;
-  background: #ff4d4f;
-  color: white;
-  border: none;
-  border-radius: 4px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+  border: 1px solid transparent;
 }
-.profile-icon {
+
+.profile-trigger:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: rgba(102, 126, 234, 0.2);
+}
+
+.profile-avatar {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
-  width: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 50%;
-  background-color: #eee;
-  font-size: 1.2rem;
+  color: white;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.profile-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.role-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.role-badge.admin {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.role-badge.seller {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.role-badge.buyer {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  color: #666;
+  transition: transform 0.3s ease;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 280px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e0e0e0;
+  z-index: 1000;
+  margin-top: 8px;
+  animation: dropdownFadeIn 0.2s ease;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dropdown Header */
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+.user-avatar-large {
+  font-size: 32px;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  color: white;
+  flex-shrink: 0;
+}
+
+.user-info h4 {
+  margin: 0 0 4px 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.user-info p {
+  margin: 0 0 6px 0;
+  color: #666;
+  font-size: 12px;
+}
+
+.user-info .role-badge {
+  font-size: 9px;
+  padding: 1px 6px;
+}
+
+/* Dropdown Divider */
+.dropdown-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 0;
+}
+
+/* Dropdown Links */
+.dropdown-links {
+  padding: 8px 0;
+}
+
+.dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #333;
+  font-size: 14px;
+}
+
+.dropdown-link:hover {
+  background: #f8fafc;
+  color: #667eea;
+}
+
+.dropdown-link:hover .link-icon {
+  transform: scale(1.1);
+}
+
+.dropdown-link.logout {
+  color: #ef4444;
+}
+
+.dropdown-link.logout:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.link-icon {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+  width: 20px;
+  text-align: center;
+}
+
+.link-text {
+  flex: 1;
+  font-weight: 500;
+}
+
+/* Dropdown Actions */
+.dropdown-actions {
+  padding: 8px 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .profile-trigger {
+    padding: 6px 8px;
+  }
+
+  .profile-name {
+    display: none;
+  }
+
+  .role-badge {
+    display: none;
+  }
+
+  .profile-info {
+    display: none;
+  }
+
+  .profile-dropdown {
+    width: 250px;
+    right: -10px;
+  }
+}
+
+/* Animation for dropdown */
+.profile-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 20px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  transform: rotate(45deg);
+  border-left: 1px solid #e0e0e0;
+  border-top: 1px solid #e0e0e0;
+  z-index: -1;
 }
