@@ -5,6 +5,11 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  /* ✅ Background image setup */
+  background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUMhcuC6kITNYN8evJy3IhYgmd2CDNQLxsuw&s"); /* Place image in public/images/ */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .page-title {

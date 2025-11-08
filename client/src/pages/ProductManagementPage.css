@@ -4,13 +4,36 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f6f6f6;
   padding: 2rem;
+
+  /* ✅ Background image setup */
+  background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVkADszZeHHdW0giKJlolu4PO_a_zcvFs1IA&s"); /* Place image in public/images/ */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  /* Optional: add soft overlay for readability */
+  position: relative;
+}
+
+.management-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4); /* dim overlay */
+  z-index: 0;
+  border-radius: inherit;
+}
+
+.management-page > * {
+  position: relative;
+  z-index: 1; /* keep content above overlay */
 }
 
 .management-page h2 {
   margin-bottom: 2rem;
-  color: #333;
+  color: #fff; /* changed for contrast */
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 .management-buttons {
@@ -22,14 +45,16 @@
 .management-buttons button {
   padding: 1rem 2rem;
   font-size: 1.1rem;
-  background: #1a1a1a;
+  background: rgba(26, 26, 26, 0.8);
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
 }
 
 .management-buttons button:hover {
-  background: #333;
+  background: rgba(51, 51, 51, 0.9);
+  transform: translateY(-2px);
 }
