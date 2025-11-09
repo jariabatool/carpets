@@ -1129,6 +1129,105 @@ app.put('/api/orders/:id/status', async (req, res) => {
     session.endSession();
   }
 });
+// Admin buyer management routes
+app.put('/api/admin/buyers/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  
+  try {
+    const { name, email, isApproved } = req.body;
+    
+    // Check if email is being changed and if it's already taken
+    if (email) {
+      const existingUser = await User.findOne({ 
+        email: email.toLowerCase(),
+        _id: { $ne: req.params.id } 
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({ message: 'Email already exists' });
+      }
+    }
+    
+    const updatedBuyer = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        name,
+        email,
+        isApproved
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedBuyer || updatedBuyer.role !== 'buyer') {
+      return res.status(404).json({ message: 'Buyer not found' });
+    }
+    
+    res.status(200).json(updatedBuyer);
+  } catch (error) {
+    console.error('Error updating buyer:', error);
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: errors.join(', ') });
+    }
+    
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+    
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+app.delete('/api/admin/buyers/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  
+  try {
+    const buyer = await User.findById(req.params.id);
+    
+    if (!buyer || buyer.role !== 'buyer') {
+      return res.status(404).json({ message: 'Buyer not found' });
+    }
+
+    // Delete the buyer and their orders
+    await User.findByIdAndDelete(req.params.id);
+    await Order.deleteMany({ 'buyer._id': req.params.id });
+    
+    res.status(200).json({ message: 'Buyer deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting buyer:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+// Admin order status update route
+app.patch('/api/admin/orders/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  
+  try {
+    const { status } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    ).populate('products.productId');
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    res.status(200).json(order);
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
 // Test endpoint for status update emails
 app.post('/api/debug/test-status-email', async (req, res) => {
   try {
